@@ -1,0 +1,4 @@
+clips/
+clips_pexels/
+*.pyc
+__pycache__/
