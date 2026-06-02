@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>⚽ Football Rouge vs Bleu</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    background: #0a0e1a;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    color: white;
+    user-select: none;
+}
+h1 {
+    font-size: 16px;
+    letter-spacing: 5px;
+    text-transform: uppercase;
+    color: #666;
+    margin-bottom: 10px;
+}
+#scoreboard {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    margin-bottom: 12px;
+    padding: 10px 32px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,0.08);
+}
+.team-score { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.team-name { font-size: 12px; font-weight: bold; letter-spacing: 3px; }
+.score-num { font-size: 44px; font-weight: bold; line-height: 1; }
+.red .team-name { color: #ff6666; }
+.red .score-num { color: #ff3333; }
+.blue .team-name { color: #6699ff; }
+.blue .score-num { color: #3377ff; }
+.sep { color: #333; font-size: 28px; font-weight: 300; }
+canvas { border-radius: 8px; display: block; }
+#controls {
+    margin-top: 10px;
+    color: #444;
+    font-size: 12px;
+    text-align: center;
+    line-height: 2;
+}
+#controls b { color: #777; }
+</style>
+</head>
+<body>
+<h1>⚽ Football</h1>
+<div id="scoreboard">
+    <div class="team-score red">
+        <div class="team-name">ROUGE</div>
+        <div class="score-num" id="redScore">0</div>
+    </div>
+    <div class="sep">—</div>
+    <div class="team-score blue">
+        <div class="team-name">BLEU</div>
+        <div class="score-num" id="blueScore">0</div>
+    </div>
+</div>
+<canvas id="c"></canvas>
+<div id="controls">
+    <b>Z S Q D</b> ou <b>↑ ↓ ← →</b> pour bouger &nbsp;|&nbsp; <b>ESPACE</b> pour tirer fort<br>
+    Le joueur rouge le plus proche du ballon est sélectionné automatiquement
+</div>
+
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+
+const W = 860, H = 540;
+canvas.width = W;
+canvas.height = H;
+const scale = Math.min((window.innerWidth - 20) / W, (window.innerHeight - 160) / H, 1);
+canvas.style.width  = (W * scale) + 'px';
+canvas.style.height = (H * scale) + 'px';
+
+// Field bounds
+const FL = 52, FR = W - 52, FT = 52, FB = H - 52;
+const FW = FR - FL, FH = FB - FT;
+
+// Goals
+const GOAL_H = 130, GOAL_W = 20;
+const GY1 = H/2 - GOAL_H/2, GY2 = H/2 + GOAL_H/2;
+
+// Scores
+let score = { red: 0, blue: 0 };
+
+// State
+let state = 'playing'; // 'playing' | 'goal'
+let stateTimer = 0;
+let goalTeam = '';
+
+// Keys
+const keys = {};
+document.addEventListener('keydown', e => {
+    keys[e.key] = true;
+    if ([' ','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) e.preventDefault();
+});
+document.addEventListener('keyup', e => { keys[e.key] = false; });
+
+// Helpers
+function dist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
+function norm(vx, vy) {
+    const l = Math.hypot(vx, vy);
+    return l < 0.0001 ? [0, 0] : [vx/l, vy/l];
+}
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+// Ball
+const ball = { x: W/2, y: H/2, r: 10, vx: 2, vy: 0.5 };
+
+// Player factory
+function mkP(x, y, team, role) {
+    return {
+        x, y, homeX: x, homeY: y,
+        r: 15, team, role, kickCD: 0,
+        speed: role === 'gk' ? 3.8 : (role === 'fwd' ? 5 : 4.6),
+    };
+}
+
+// Red (left side) attacks right goal
+let redTeam = [
+    mkP(76,     H/2,       'red', 'gk'),
+    mkP(200,    H/2 - 110, 'red', 'def'),
+    mkP(200,    H/2 + 110, 'red', 'def'),
+    mkP(360,    H/2,       'red', 'mid'),
+    mkP(490,    H/2 - 80,  'red', 'fwd'),
+    mkP(490,    H/2 + 80,  'red', 'fwd'),
+];
+
+// Blue (right side) attacks left goal
+let blueTeam = [
+    mkP(W-76,   H/2,       'blue', 'gk'),
+    mkP(W-200,  H/2 - 110, 'blue', 'def'),
+    mkP(W-200,  H/2 + 110, 'blue', 'def'),
+    mkP(W-360,  H/2,       'blue', 'mid'),
+    mkP(W-490,  H/2 - 80,  'blue', 'fwd'),
+    mkP(W-490,  H/2 + 80,  'blue', 'fwd'),
+];
+
+let controlled = redTeam[4];
+
+function pickControlled() {
+    let best = null, minD = Infinity;
+    for (const p of redTeam) {
+        const d = dist(p, ball);
+        if (d < minD) { minD = d; best = p; }
+    }
+    controlled = best;
+}
+
+function resetField() {
+    ball.x = W/2; ball.y = H/2; ball.vx = 0; ball.vy = 0;
+    for (const p of [...redTeam, ...blueTeam]) {
+        p.x = p.homeX; p.y = p.homeY; p.kickCD = 0;
+    }
+}
+
+// AI update — attackX: x-coordinate to kick toward; isLeft: true if own goal is on left
+function aiUpdate(p, myTeam, attackX, ownGoalLeft) {
+    if (state !== 'playing') return;
+    if (p.kickCD > 0) { p.kickCD--; return; }
+
+    const bd = dist(p, ball);
+    let tx, ty;
+
+    // GK positioning
+    if (p.role === 'gk') {
+        const gkLineX = ownGoalLeft ? FL + 48 : FR - 48;
+        tx = gkLineX;
+        ty = clamp(ball.y, GY1 + 18, GY2 - 18);
+        // Rush if ball dangerously close
+        const danger = ownGoalLeft ? ball.x < FL + 160 : ball.x > FR - 160;
+        if (danger && bd < 110) { tx = ball.x; ty = ball.y; }
+    } else {
+        // Find closest teammate to ball
+        let closest = myTeam[0];
+        for (const q of myTeam) if (dist(q, ball) < dist(closest, ball)) closest = q;
+
+        if (p === closest || bd < 90) {
+            tx = ball.x; ty = ball.y;
+        } else {
+            // Tactical shape following ball
+            const bf = (ball.x - FL) / FW; // 0..1
+            const ownRight = !ownGoalLeft;
+            if (p.role === 'fwd') {
+                tx = ownGoalLeft ? FL + FW * (0.48 + bf * 0.38) : FL + FW * (0.14 + (1-bf) * 0.38);
+                ty = p.homeY + (ball.y - H/2) * 0.45;
+            } else if (p.role === 'mid') {
+                tx = ownGoalLeft ? FL + FW * (0.28 + bf * 0.28) : FL + FW * (0.44 - bf * 0.28);
+                ty = p.homeY + (ball.y - H/2) * 0.35;
+            } else {
+                tx = p.homeX + (ball.x - W/2) * 0.12;
+                ty = p.homeY + (ball.y - H/2) * 0.28;
+            }
+            tx = clamp(tx, FL + p.r, FR - p.r);
+            ty = clamp(ty, FT + p.r, FB - p.r);
+        }
+    }
+
+    // Move toward target
+    const d = dist(p, {x: tx, y: ty});
+    if (d > 1) {
+        const [nx, ny] = norm(tx - p.x, ty - p.y);
+        const spd = Math.min(p.speed, d * 0.18 + 0.6);
+        p.x += nx * spd;
+        p.y += ny * spd;
+    }
+
+    // Kick if touching ball
+    if (bd < p.r + ball.r + 6) {
+        const scatter = (Math.random() - 0.5) * 90;
+        const [kx, ky] = norm(attackX - ball.x, H/2 + scatter - ball.y);
+        const power = 8 + Math.random() * 5;
+        ball.vx = kx * power;
+        ball.vy = ky * power;
+        p.kickCD = 18 + Math.floor(Math.random() * 12);
+    }
+
+    p.x = clamp(p.x, FL + p.r, FR - p.r);
+    p.y = clamp(p.y, FT + p.r, FB - p.r);
+}
+
+// ---- UPDATE ----
+function update() {
+    if (state === 'goal') {
+        if (--stateTimer <= 0) { state = 'playing'; resetField(); }
+        return;
+    }
+
+    pickControlled();
+
+    // Player input
+    if (controlled) {
+        let dx = 0, dy = 0;
+        if (keys['z'] || keys['Z'] || keys['ArrowUp'])    dy -= 1;
+        if (keys['s'] || keys['S'] || keys['ArrowDown'])  dy += 1;
+        if (keys['q'] || keys['Q'] || keys['ArrowLeft'])  dx -= 1;
+        if (keys['d'] || keys['D'] || keys['ArrowRight']) dx += 1;
+        const [nx, ny] = norm(dx, dy);
+        controlled.x = clamp(controlled.x + nx * controlled.speed, FL + controlled.r, FR - controlled.r);
+        controlled.y = clamp(controlled.y + ny * controlled.speed, FT + controlled.r, FB - controlled.r);
+
+        if (keys[' '] && dist(controlled, ball) < controlled.r + ball.r + 20) {
+            const [kx, ky] = norm(ball.x - controlled.x, ball.y - controlled.y);
+            ball.vx = kx * 15;
+            ball.vy = ky * 15;
+            keys[' '] = false;
+        }
+    }
+
+    // AI
+    for (const p of redTeam)  if (p !== controlled) aiUpdate(p, redTeam,  W + 20, true);
+    for (const p of blueTeam) aiUpdate(p, blueTeam, -20,    false);
+
+    // Ball physics
+    ball.vx *= 0.972;
+    ball.vy *= 0.972;
+    ball.x  += ball.vx;
+    ball.y  += ball.vy;
+
+    // Ball ↔ players push
+    for (const p of [...redTeam, ...blueTeam]) {
+        const d = dist(p, ball);
+        const minD = p.r + ball.r;
+        if (d < minD && d > 0.01) {
+            const [nx, ny] = norm(ball.x - p.x, ball.y - p.y);
+            ball.x = p.x + nx * (minD + 1);
+            ball.y = p.y + ny * (minD + 1);
+            ball.vx += nx * 1.8;
+            ball.vy += ny * 1.8;
+        }
+    }
+
+    // Player ↔ player separation
+    const all = [...redTeam, ...blueTeam];
+    for (let i = 0; i < all.length; i++) {
+        for (let j = i+1; j < all.length; j++) {
+            const a = all[i], b = all[j];
+            const d = dist(a, b), minD = a.r + b.r - 2;
+            if (d < minD && d > 0.01) {
+                const [nx, ny] = norm(b.x - a.x, b.y - a.y);
+                const ov = (minD - d) / 2;
+                a.x -= nx*ov; a.y -= ny*ov;
+                b.x += nx*ov; b.y += ny*ov;
+            }
+        }
+    }
+
+    // Top / bottom walls
+    if (ball.y - ball.r < FT) { ball.y = FT + ball.r; ball.vy =  Math.abs(ball.vy) * 0.65; }
+    if (ball.y + ball.r > FB) { ball.y = FB - ball.r; ball.vy = -Math.abs(ball.vy) * 0.65; }
+
+    // Left side
+    if (ball.x - ball.r < FL) {
+        if (ball.y > GY1 && ball.y < GY2) {
+            score.blue++;
+            document.getElementById('blueScore').textContent = score.blue;
+            goalTeam = 'blue'; state = 'goal'; stateTimer = 160;
+        } else {
+            ball.x = FL + ball.r; ball.vx = Math.abs(ball.vx) * 0.65;
+        }
+        return;
+    }
+    // Right side
+    if (ball.x + ball.r > FR) {
+        if (ball.y > GY1 && ball.y < GY2) {
+            score.red++;
+            document.getElementById('redScore').textContent = score.red;
+            goalTeam = 'red'; state = 'goal'; stateTimer = 160;
+        } else {
+            ball.x = FR - ball.r; ball.vx = -Math.abs(ball.vx) * 0.65;
+        }
+        return;
+    }
+}
+
+// ---- DRAW ----
+function roundRect(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x+r, y);
+    ctx.arcTo(x+w, y,   x+w, y+h, r);
+    ctx.arcTo(x+w, y+h, x,   y+h, r);
+    ctx.arcTo(x,   y+h, x,   y,   r);
+    ctx.arcTo(x,   y,   x+w, y,   r);
+    ctx.closePath();
+}
+
+function drawField() {
+    // Base
+    ctx.fillStyle = '#1b5e1a';
+    ctx.fillRect(0, 0, W, H);
+
+    // Grass stripes
+    const sw = FW / 10;
+    for (let i = 0; i < 10; i++) {
+        ctx.fillStyle = i % 2 ? '#1f6b1e' : '#1b5e1a';
+        ctx.fillRect(FL + i * sw, FT, sw, FH);
+    }
+
+    // Lines
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,255,255,0.82)';
+    ctx.lineWidth = 2;
+
+    // Border
+    ctx.strokeRect(FL, FT, FW, FH);
+
+    // Center line
+    ctx.beginPath(); ctx.moveTo(W/2, FT); ctx.lineTo(W/2, FB); ctx.stroke();
+
+    // Center circle
+    ctx.beginPath(); ctx.arc(W/2, H/2, 65, 0, Math.PI*2); ctx.stroke();
+
+    // Penalty areas
+    ctx.strokeRect(FL, H/2 - 110, 112, 220);
+    ctx.strokeRect(FR - 112, H/2 - 110, 112, 220);
+
+    // 6-yard boxes
+    ctx.strokeRect(FL, H/2 - 52, 44, 104);
+    ctx.strokeRect(FR - 44, H/2 - 52, 44, 104);
+
+    // Penalty spots
+    ctx.fillStyle = 'rgba(255,255,255,0.72)';
+    ctx.beginPath(); ctx.arc(FL + 82, H/2, 3.5, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(FR - 82, H/2, 3.5, 0, Math.PI*2); ctx.fill();
+
+    // Center dot
+    ctx.beginPath(); ctx.arc(W/2, H/2, 3.5, 0, Math.PI*2); ctx.fill();
+
+    // Corner arcs
+    ctx.lineWidth = 1.5;
+    for (const [cx, cy] of [[FL,FT],[FR,FT],[FL,FB],[FR,FB]]) {
+        const a1 = (cx === FL ? 0 : Math.PI) + (cy === FT ? -Math.PI/2 : Math.PI/2) - Math.PI/4;
+        const a2 = a1 + Math.PI/2;
+        ctx.beginPath(); ctx.arc(cx, cy, 12, a1, a2); ctx.stroke();
+    }
+    ctx.restore();
+
+    // Goal nets (grid)
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,255,255,0.22)';
+    ctx.lineWidth = 1;
+    for (let gy = GY1; gy <= GY2; gy += 16) {
+        ctx.beginPath(); ctx.moveTo(FL - GOAL_W, gy); ctx.lineTo(FL, gy); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(FR, gy); ctx.lineTo(FR + GOAL_W, gy); ctx.stroke();
+    }
+    for (let gx = FL - GOAL_W; gx <= FL; gx += 12) {
+        ctx.beginPath(); ctx.moveTo(gx, GY1); ctx.lineTo(gx, GY2); ctx.stroke();
+    }
+    for (let gx = FR; gx <= FR + GOAL_W; gx += 12) {
+        ctx.beginPath(); ctx.moveTo(gx, GY1); ctx.lineTo(gx, GY2); ctx.stroke();
+    }
+    ctx.restore();
+
+    // Goal net background
+    ctx.fillStyle = 'rgba(255,255,255,0.06)';
+    ctx.fillRect(FL - GOAL_W, GY1, GOAL_W, GOAL_H);
+    ctx.fillRect(FR, GY1, GOAL_W, GOAL_H);
+
+    // Goal posts
+    ctx.save();
+    ctx.strokeStyle = '#eeeeee';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(FL - GOAL_W, GY1, GOAL_W, GOAL_H);
+    ctx.strokeRect(FR, GY1, GOAL_W, GOAL_H);
+    ctx.restore();
+}
+
+function drawPlayer(p) {
+    const isCtrl = p === controlled;
+
+    // Shadow
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,0.22)';
+    ctx.beginPath();
+    ctx.ellipse(p.x + 3, p.y + p.r * 0.72, p.r * 0.88, p.r * 0.38, 0, 0, Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+
+    // Selection ring
+    if (isCtrl) {
+        ctx.save();
+        ctx.strokeStyle = '#ffe500';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([5, 4]);
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = '#ffe500';
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r + 7, 0, Math.PI*2);
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    // Body
+    const isRed = p.team === 'red';
+    const grad = ctx.createRadialGradient(p.x - p.r*0.3, p.y - p.r*0.35, 1, p.x, p.y, p.r);
+    if (isRed) {
+        grad.addColorStop(0, '#ff8888');
+        grad.addColorStop(0.5, '#e82020');
+        grad.addColorStop(1, '#8b0000');
+    } else {
+        grad.addColorStop(0, '#88aaff');
+        grad.addColorStop(0.5, '#1a50e8');
+        grad.addColorStop(1, '#00228b');
+    }
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+    ctx.fill();
+
+    ctx.strokeStyle = isRed ? '#6b0000' : '#001888';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Shirt number / GK label
+    ctx.fillStyle = 'rgba(255,255,255,0.88)';
+    ctx.font = `bold ${p.role === 'gk' ? 10 : 9}px Arial`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(p.role === 'gk' ? 'G' : '', p.x, p.y);
+}
+
+function drawBall() {
+    const spd = Math.hypot(ball.vx, ball.vy);
+
+    // Motion blur
+    if (spd > 2.5) {
+        for (let i = 4; i >= 1; i--) {
+            ctx.fillStyle = `rgba(255,255,255,${0.04 * (5-i)})`;
+            ctx.beginPath();
+            ctx.arc(ball.x - ball.vx * i * 0.35, ball.y - ball.vy * i * 0.35,
+                    ball.r * (1 - i * 0.08), 0, Math.PI*2);
+            ctx.fill();
+        }
+    }
+
+    // Shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.28)';
+    ctx.beginPath();
+    ctx.ellipse(ball.x + 2, ball.y + 5, ball.r, ball.r * 0.44, 0, 0, Math.PI*2);
+    ctx.fill();
+
+    // Ball
+    const bg = ctx.createRadialGradient(ball.x - ball.r*0.35, ball.y - ball.r*0.4, 1, ball.x, ball.y, ball.r);
+    bg.addColorStop(0, '#ffffff');
+    bg.addColorStop(0.65, '#dddddd');
+    bg.addColorStop(1, '#999');
+    ctx.fillStyle = bg;
+    ctx.beginPath();
+    ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI*2);
+    ctx.fill();
+
+    // Pentagons
+    ctx.fillStyle = '#333';
+    ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.r * 0.28, 0, Math.PI*2); ctx.fill();
+    for (let i = 0; i < 5; i++) {
+        const a = (i / 5) * Math.PI * 2 - Math.PI / 2;
+        ctx.beginPath();
+        ctx.arc(ball.x + Math.cos(a) * ball.r * 0.62, ball.y + Math.sin(a) * ball.r * 0.62,
+                ball.r * 0.2, 0, Math.PI*2);
+        ctx.fill();
+    }
+}
+
+function drawGoalOverlay() {
+    if (state !== 'goal') return;
+    const alpha = clamp(stateTimer < 30 ? stateTimer / 30 : 1, 0, 1);
+    ctx.save();
+    ctx.globalAlpha = alpha;
+
+    // Field flash
+    ctx.fillStyle = goalTeam === 'red'
+        ? `rgba(255,30,30,${0.12 + Math.sin(stateTimer * 0.25) * 0.06})`
+        : `rgba(30,80,255,${0.12 + Math.sin(stateTimer * 0.25) * 0.06})`;
+    ctx.fillRect(0, 0, W, H);
+
+    // Box
+    const bw = 360, bh = 116, bx = W/2 - bw/2, by = H/2 - bh/2;
+    ctx.fillStyle = 'rgba(0,0,0,0.75)';
+    roundRect(bx - 5, by - 5, bw + 10, bh + 10, 18);
+    ctx.fill();
+    ctx.fillStyle = goalTeam === 'red' ? '#cc1111' : '#1133cc';
+    roundRect(bx, by, bw, bh, 15);
+    ctx.fill();
+
+    ctx.fillStyle = 'white';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = 'bold 58px Arial';
+    ctx.fillText('BUT !', W/2, H/2 - 14);
+    ctx.font = 'bold 19px Arial';
+    ctx.fillText((goalTeam === 'red' ? 'Équipe Rouge' : 'Équipe Bleue') + ' marque !', W/2, H/2 + 36);
+    ctx.restore();
+}
+
+// ---- LOOP ----
+function draw() {
+    ctx.clearRect(0, 0, W, H);
+    drawField();
+    for (const p of blueTeam) drawPlayer(p);
+    for (const p of redTeam)  drawPlayer(p);
+    drawBall();
+    drawGoalOverlay();
+}
+
+function loop() {
+    update();
+    draw();
+    requestAnimationFrame(loop);
+}
+
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
