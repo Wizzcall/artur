@@ -5,7 +5,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import build_scene as B, bpy
 B.build()
 sc = bpy.context.scene
-out = "/tmp/claude-0/-home-user-artur/2e7c85db-80c0-59ce-9901-bb9277434b07/scratchpad/"
+out = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "build", "ab") + "/"
+os.makedirs(out, exist_ok=True)
 for f in (230, 445):
     sc.frame_set(f)
     for name, vt, look, glare in (("agx", "AgX", "AgX - Punchy", True), ("std", "Standard", "None", True),
