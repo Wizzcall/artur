@@ -556,6 +556,19 @@ POSES = {
                    "hip_R": (0, -10, 0), "hip_L": (0, 10, 0), "head": (2, 0, 0)},
 }
 
+# Luffy looking up at the token in the sky, fists clenched (hope + hunger)
+POSES["luffy_look_up"] = {"sh_R": (5, -14, 0), "sh_L": (5, 14, 0), "el_R": (35, 0, 0), "el_L": (35, 0, 0),
+                          "spine": (6, 0, 0), "head": (28, 0, 0), "hip_R": (0, -6, 0), "hip_L": (0, 6, 0)}
+# Gum-Gum grab: right arm aimed up-forward at the token (spine kept straight
+# so the stretched arm points exactly at the target)
+POSES["luffy_grab"] = {"sh_R": (148.5, 0, 0), "el_R": (0, 0, 0), "sh_L": (-35, 30, 0), "el_L": (60, 0, 0),
+                       "spine": (0, 0, 0), "head": (30, 0, 0), "hip_R": (-5, -6, 0), "hip_L": (14, 8, 0),
+                       "knee_L": (-18, 0, 0)}
+# celebration: both arms up
+POSES["cheer"] = {"sh_R": (165, -35, 0), "el_R": (15, 0, 0), "sh_L": (165, 35, 0), "el_L": (15, 0, 0),
+                  "spine": (6, 0, 0), "head": (18, 0, 0), "hip_R": (0, -10, 0), "hip_L": (0, 10, 0)}
+POSES["cheer_fist"] = {"sh_R": (170, -12, 0), "el_R": (10, 0, 0), "sh_L": (40, 45, 0), "el_L": (100, 0, 0),
+                       "spine": (5, 0, 4), "head": (12, 0, -6), "hip_R": (0, -10, 0), "hip_L": (0, 10, 0)}
 POSES["crew_look_up"] = dict(POSES["crew_power"], head=(32, 0, 0), spine=(8, 0, 0))
 
 JOINTS = ["sh_R", "sh_L", "el_R", "el_L", "hip_R", "hip_L", "knee_R", "knee_L", "spine", "head"]

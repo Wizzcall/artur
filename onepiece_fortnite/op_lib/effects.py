@@ -209,16 +209,17 @@ def _bolt_curve(name, start, end, segs=9, jitter=0.35, bevel=0.025):
     return cu
 
 
-def lightning(name, center, f0, color, parent=None, n=5, dur=30, height=4.0):
+def lightning(name, center, f0, color, parent=None, n=5, dur=30, height=4.0, bevel=0.025,
+              jitter=0.35, spread=1.0, strength=25):
     """Nami: bolts striking down around her, flickering on/off."""
-    mat = mat_emit_fade(f"{name}_Mat", color, 25)
+    mat = mat_emit_fade(f"{name}_Mat", color, strength)
     c = Vector(center)
     for i in range(n):
         a = 2 * math.pi * i / n + RNG.uniform(-0.3, 0.3)
-        r = RNG.uniform(0.6, 1.3)
+        r = RNG.uniform(0.6, 1.3) * spread
         end = c + Vector((math.cos(a) * r, math.sin(a) * r, 0))
-        start = end + Vector((RNG.uniform(-0.6, 0.6), RNG.uniform(-0.6, 0.6), height))
-        cu = _bolt_curve(f"{name}_c{i}", start, end)
+        start = end + Vector((RNG.uniform(-0.6, 0.6) * spread, RNG.uniform(-0.6, 0.6) * spread, height))
+        cu = _bolt_curve(f"{name}_c{i}", start, end, segs=12, jitter=jitter, bevel=bevel)
         cu.materials.append(mat)
         ob = bpy.data.objects.new(f"{name}{i}", cu)
         link(ob)
@@ -324,7 +325,8 @@ def sparkles(name, center, f0, color, count=26, parent=None, radius=1.6, dur=40)
 # Treasure rain
 # ---------------------------------------------------------------------
 def treasure_rain(temps, origin, f0, f1, n_vbucks=40, n_tokens=12, n_symbols=16,
-                  spread=9.0, up=10.0, gravity=-7.0, seed_shift=0, area_center=None):
+                  spread=9.0, up=10.0, gravity=-7.0, seed_shift=0, area_center=None,
+                  n_cards=0, n_gliders=0):
     """Items explode out of `origin` at f0 and fall with gravity until f1.
     Coins are linked duplicates of the template hierarchy (cheap)."""
     rnd = random.Random(C.SEED + seed_shift)
@@ -342,12 +344,16 @@ def treasure_rain(temps, origin, f0, f1, n_vbucks=40, n_tokens=12, n_symbols=16,
             c2.parent = new
         return new
 
-    kinds = (["vbuck"] * n_vbucks) + (["token"] * n_tokens) + (["symbol"] * n_symbols)
+    kinds = (["vbuck"] * n_vbucks) + (["token"] * n_tokens) + (["symbol"] * n_symbols) \
+        + (["card"] * n_cards) + (["glider"] * n_gliders)
     rnd.shuffle(kinds)
     for i, kind in enumerate(kinds):
         if kind == "symbol":
             ob = obj_from_mesh(f"Rain_sym{i}", temps["symbol_mesh"], temps["symbol_mat"], None, o)
             ob.color = (1, 1, 1, 1)
+            no_shadow(ob)
+        elif kind == "card":
+            ob = obj_from_mesh(f"Rain_card{i}", temps["card_mesh"], temps["card_mats"][i % 3], None, o)
             no_shadow(ob)
         else:
             ob = dup_tree(temps[kind], f"Rain_{kind}{i}")
@@ -357,17 +363,30 @@ def treasure_rain(temps, origin, f0, f1, n_vbucks=40, n_tokens=12, n_symbols=16,
         v = Vector((horiz.x, horiz.y, up * rnd.uniform(0.3, 1.0)))
         steps = 8
         dur = f1 - start
+        g = gravity * (0.12 if kind == "glider" else (0.45 if kind == "card" else 1.0))   # floaty
         for k in range(steps + 1):
             t = dur / C.FPS * k / steps
             # air drag: slows horizontal motion over time
             p = o + Vector((v.x, v.y, 0)) * (1 - math.exp(-t * 1.2)) / 1.2 \
-                + Vector((0, 0, v.z * t + 0.5 * gravity * t * t))
+                + Vector((0, 0, v.z * t + 0.5 * g * t * t))
+            if kind == "glider":                       # gliders keep drifting sideways
+                p += Vector((math.cos(a), math.sin(a), 0)) * t * 1.2
             key_loc(ob, int(start + dur * k / steps), p, "BEZIER" if k else "EXPO")
-        r0 = Euler((rnd.uniform(0, 6.28), rnd.uniform(0, 6.28), rnd.uniform(0, 6.28)))
-        key_rot(ob, start, r0, "LINEAR")
-        key_rot(ob, f1, (r0.x + rnd.uniform(-12, 12), r0.y + rnd.uniform(-8, 8), r0.z + rnd.uniform(-6, 6)),
-                "LINEAR")
-        sc = rnd.uniform(0.8, 1.3) * (1.4 if kind == "symbol" else 1.0)
+        if kind == "glider":
+            yaw = a - math.pi / 2
+            key_rot(ob, start, (0, R(rnd.uniform(-15, 15)), yaw), "LINEAR")
+            key_rot(ob, f1, (R(-8), R(rnd.uniform(-15, 15)), yaw + rnd.uniform(-0.6, 0.6)), "LINEAR")
+        elif kind == "card":                           # cards flutter, mostly facing out
+            r0 = Euler((R(90 + rnd.uniform(-25, 25)), 0, rnd.uniform(-0.5, 0.5) + math.pi))
+            key_rot(ob, start, r0, "LINEAR")
+            key_rot(ob, f1, (r0.x + rnd.uniform(-1.2, 1.2), rnd.uniform(-0.8, 0.8), r0.z + rnd.uniform(-2, 2)),
+                    "LINEAR")
+        else:
+            r0 = Euler((rnd.uniform(0, 6.28), rnd.uniform(0, 6.28), rnd.uniform(0, 6.28)))
+            key_rot(ob, start, r0, "LINEAR")
+            key_rot(ob, f1, (r0.x + rnd.uniform(-12, 12), r0.y + rnd.uniform(-8, 8), r0.z + rnd.uniform(-6, 6)),
+                    "LINEAR")
+        sc = rnd.uniform(0.8, 1.3) * {"symbol": 1.4, "card": 1.5, "glider": 1.3}.get(kind, 1.0)
         key_scale(ob, start, 0.01, "BACK")
         key_scale(ob, start + 8, sc, "BEZIER")
         for x in [ob] + list(ob.children):
@@ -406,3 +425,35 @@ def gentle_rain(temps, center, f0, f1, count=26, width=12, height=14, seed_shift
         for x_ in [ob] + list(ob.children):
             key(x_, "hide_render", 1, True, "CONSTANT")
             key(x_, "hide_render", f0, False, "CONSTANT")
+
+
+# ---------------------------------------------------------------------
+# Storm rain
+# ---------------------------------------------------------------------
+def rain(name, center, size=(22, 22), top=11.0, f0=1, f1=240, count=320, color=(0.65, 0.75, 0.95),
+         strength=1.6, wind=(0.8, -0.3), fade=20):
+    """Falling rain streaks inside a box around `center`.  Each streak
+    loops (fall -> jump back up) with its own speed and phase."""
+    mat = mat_emit_fade(f"{name}_Mat", color, strength)
+    me = mesh_cylinder(f"{name}_mesh", 0.008, 0.9, 6)
+    c = Vector(center)
+    w = Vector((wind[0], wind[1], 0))
+    for i in range(count):
+        x = c.x + RNG.uniform(-size[0] / 2, size[0] / 2)
+        y = c.y + RNG.uniform(-size[1] / 2, size[1] / 2)
+        period = RNG.randint(13, 19)                      # frames per fall
+        fall = Vector((0, 0, -top)) + w * (period / C.FPS)
+        tilt = Vector((-fall.x, -fall.y, -fall.z)).normalized().to_track_quat("Z", "Y").to_euler()
+        ob = _fx_obj(f"{name}{i}", me, mat, None, (x, y, top), tilt)
+        only_camera_visible(ob)
+        start_top = Vector((x, y, top))
+        f = f0 - RNG.randint(0, period)
+        while f < f1:
+            key_loc(ob, f, start_top, "LINEAR")
+            key_loc(ob, f + period - 1, start_top + fall * ((period - 1) / period), "CONSTANT")
+            f += period
+        a = RNG.uniform(0.5, 1.0)
+        key_alpha(ob, f0, a, "LINEAR")
+        key_alpha(ob, f1 - fade, a, "LINEAR")
+        key_alpha(ob, f1, 0.0, "LINEAR")
+        _hide_outside(ob, f0, f1)

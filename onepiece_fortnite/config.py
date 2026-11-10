@@ -22,14 +22,13 @@ HEIGHT = 1920           # final video height
 
 # ---------------------------------------------------------------------
 # 2. STORY SECTIONS  (seconds)  -  start, end
-#    Total length = SECTIONS["finale"][1]  (37 s by default)
+#    Total length = SECTIONS["finale"][1]  (36 s by default)
 # ---------------------------------------------------------------------
 SECTIONS = {
-    "token":    (0.0, 6.0),    # night ocean, Pirate Shop Token rises
-    "reveal":   (6.0, 14.0),   # sunrise, ship + Luffy reveal
-    "crew":     (14.0, 22.0),  # crew members appear one by one
-    "climax":   (22.0, 30.0),  # Gum-Gum punch, treasure chest explosion
-    "finale":   (30.0, 37.0),  # final texts + logo
+    "storm":    (0.0, 8.0),    # stormy night, rain, the token rises from the depths
+    "reveal":   (8.0, 16.0),   # sunrise, Going Merry, Luffy looks up, crew appears
+    "climax":   (16.0, 26.0),  # Gum-Gum grab, golden explosion, treasure rain
+    "finale":   (26.0, 36.0),  # crew + floating token, final titles
 }
 DURATION = SECTIONS["finale"][1]
 
@@ -40,35 +39,49 @@ def sec(t):
 
 
 FRAME_START = 1
-FRAME_END = sec(DURATION) - 1          # 37 s -> frames 1..1110
+FRAME_END = sec(DURATION) - 1          # 36 s -> frames 1..1080
+
+# Key story moments (seconds).  Used by BOTH the animation and the music,
+# so picture and sound always stay in sync.
+EVENTS = {
+    "lightning":   [1.7, 4.4, 6.6],          # storm lightning strikes
+    "dawn_flash":  7.85,                     # token flares -> sunrise
+    "crew_appear": [11.9, 12.8, 13.7, 14.6],  # Zoro, Nami, Sanji, Chopper
+    "windup":      16.5,
+    "launch":      17.1,                     # Gum-Gum arm shoots out
+    "grab":        17.6,                     # fist closes on the token
+    "explosion":   17.75,                    # golden explosion
+    "logo":        33.4,
+}
 
 # ---------------------------------------------------------------------
 # 3. ON-SCREEN TEXT   (change freely - the layout auto-fits the width)
 # ---------------------------------------------------------------------
 TEXT = {
-    "assembling": "THE CREW IS\nASSEMBLING",
-    "one_by_one": "ONE BY ONE",
+    "rarest": "THE RAREST\nTREASURE",
+    "one_drop": "ONE DROP CAN\nCHANGE EVERYTHING",
+    "days_free": "14 DAYS\nFREE",
+    "two_times": "TWO TIMES",
+    "two_times_sub": "2026  +  2027",
     "final_lines": [
-        "THE TREASURE\nIS HERE",
-        "USE YOUR\nTOKEN",
+        "KEEP OPENING",
+        "THE TOKEN IS\nOUT THERE",
         "CLAIM YOUR\nCREW",
     ],
     "logo_top": "ONE PIECE",
     "logo_x": "x",
     "logo_bottom": "FORTNITE",
-    "logo_sub": "TREASURE HUNTERS",
-    "token_face": "PIRATE\nSHOP",      # engraved on the token texture
+    "logo_sub": "PIRATE SHOP ACCESS",
 }
 
-# Show the character name under each crew member in the "crew" section
-SHOW_CREW_NAMES = True
-
-# Text timing (seconds, absolute)
+# Text timing (seconds, absolute)  -  (appear, disappear)
 TEXT_TIMING = {
-    "assembling": (9.6, 13.7),
-    "one_by_one": (14.15, 21.8),
-    "final_lines": [(30.35, 34.4), (31.55, 34.4), (32.75, 34.4)],
-    "logo": (34.55, DURATION),
+    "rarest": (3.9, 7.7),
+    "one_drop": (8.9, 15.7),
+    "days_free": (19.3, 22.3),
+    "two_times": (22.5, 25.8),
+    "final_lines": [(26.5, 28.8), (29.0, 31.2), (31.4, 33.2)],
+    "logo": (EVENTS["logo"], DURATION),
 }
 
 # Fonts (first existing file wins, otherwise Blender's built-in font)
@@ -99,8 +112,8 @@ COLORS = {
     "white":        (1.0, 1.0, 1.0),
     "black":        (0.01, 0.01, 0.012),
     "skin":         (0.93, 0.66, 0.50),
-    "night_sky_top":     (0.002, 0.004, 0.018),
-    "night_sky_horizon": (0.010, 0.030, 0.090),
+    "night_sky_top":     (0.004, 0.006, 0.014),
+    "night_sky_horizon": (0.020, 0.032, 0.060),
     "dawn_sky_top":      (0.03, 0.16, 0.70),
     "dawn_sky_horizon":  (1.00, 0.42, 0.12),
     "text_top":     (1.00, 0.92, 0.35),    # gradient top of title text
@@ -109,7 +122,7 @@ COLORS = {
 }
 
 # ---------------------------------------------------------------------
-# 5. CREW   (order = order of appearance in the "crew" section)
+# 5. CREW   (order = order of appearance behind Luffy)
 #    builder : function name in op_lib/characters.py
 #    pos     : (x, y) position on the ship deck  (+Y = bow / camera side)
 #    fx      : appearance effect  ("slash", "lightning", "fire", "sparkle")
@@ -126,6 +139,7 @@ CREW = [
      "fx": "sparkle",   "color": COLORS["chopper_pink"]},
 ]
 LUFFY_POS = (0.0, 6.4)       # Luffy stands at the bow
+TOKEN_START = (0.0, 22.0)    # where the token rises out of the sea (x, y)
 
 # ---------------------------------------------------------------------
 # 6. RENDER QUALITY
@@ -140,7 +154,7 @@ QUALITY_PRESETS = {
     "hd":      dict(scale=67, samples=6, motion_blur=False),    # 720x1280 -> upscaled
     "final":   dict(scale=100, samples=24, motion_blur=True),
 }
-DEFAULT_QUALITY = "final"
+DEFAULT_QUALITY = "hd"
 QUALITY = os.environ.get("OPF_QUALITY", DEFAULT_QUALITY)
 
 # Ocean detail (higher = nicer waves, slower)

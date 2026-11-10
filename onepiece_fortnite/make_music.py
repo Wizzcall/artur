@@ -2,14 +2,16 @@
 =====================================================================
   Procedural epic soundtrack  (numpy only, no samples / no internet)
 =====================================================================
-Writes build/soundtrack.wav, synced to the story beats in config.py:
+Writes build/soundtrack.wav, synced to config.EVENTS / TEXT_TIMING:
 
-  0-6 s    mystical pad + shimmering bells, riser into the token flash
-  6-14 s   epic chords (Dm-Bb-F-C), taiko hits, title impact
-  14-22 s  driving drums, one whoosh+impact per crew member
-  22-30 s  build-up, silence beat, BIG impact on the chest explosion,
-           full anthem drop with lead melody
-  30-37 s  anthem, impacts on each title, logo hit, ring-out
+  0-8 s    storm: rain, thunder on each lightning strike, dark pad,
+           accelerating heartbeat + bells as the token rises, riser -> flash
+  8-16 s   sunrise: epic chords (Dm-Bb-F-C), taiko, one hit per crew member
+  16-18 s  snare roll on the wind-up, whoosh on the Gum-Gum stretch,
+           BIG impact on the golden explosion
+  18-26 s  anthem drop with heroic lead, hits on "14 DAYS FREE" / "TWO TIMES"
+  26-29 s  emotional breakdown (pads + bells) for "KEEP OPENING"
+  29-36 s  anthem returns, title hits, logo impact, ring-out
 
 Edit BPM / KEY / CHORDS / MELODY below to change the music.
 Run:  python3 make_music.py
@@ -214,99 +216,111 @@ def reverb(x, seconds=1.8, mix=0.25):
 
 
 # ---------------------------------------------------------------------
-# Arrangement
+# Arrangement  (all times come from config.EVENTS / SECTIONS / TEXT_TIMING)
 # ---------------------------------------------------------------------
+def rain_bed(dur):
+    n = rng.standard_normal(int(dur * SR))
+    return lowpass(highpass(n, 300), 6000) * 0.5
+
+
+def thunder(dur=4.0):
+    t = t_arr(dur)
+    crack = highpass(rng.standard_normal(len(t)), 800) * np.exp(-t * 9)
+    rumble = lowpass(rng.standard_normal(len(t)), 160) * np.exp(-t * 0.9) * 3.0
+    return np.tanh(crack * 0.8 + rumble)
+
+
+def heartbeat(dur=0.6):
+    t = t_arr(dur)
+    s = np.sin(2 * np.pi * np.cumsum(55 + 25 * np.exp(-t * 30)) / SR) * np.exp(-t * 12)
+    return s
+
+
 def build():
     music = Track()     # gets reverb
     fx = Track()        # impacts (less reverb)
-    S = C.SECTIONS
-    flash = 5.85
-    impact = 24.15
+    S, E, TT = C.SECTIONS, C.EVENTS, C.TEXT_TIMING
+    flash = E["dawn_flash"]
+    boom_t = E["explosion"]
+    bar = 4 * BEAT
 
-    # --- 0-6 : mystery -------------------------------------------------
-    music.add(pad([50, 57, 62, 65], 6.3, cutoff=900, attack=2.0), 0.0, 0.5)
-    music.add(pad([38], 6.3, cutoff=300, attack=1.5), 0.0, 0.5)
-    for i, m in enumerate([74, 77, 81, 79, 74, 77, 81, 84, 81, 77, 74, 86]):
-        music.add(bell(m, 2.0), 0.4 + i * 0.42, 0.18, pan=(-0.5 if i % 2 else 0.5))
-    fx.add(riser(2.2), flash - 2.2, 0.55)
-    fx.add(boom(3.5), flash, 0.9)
+    # --- 0-8 : storm, mystery, hunger ----------------------------------
+    fx.add(rain_bed(flash + 0.6), 0.0, 0.10)
+    music.add(pad([50, 57, 62, 65], flash + 0.4, cutoff=800, attack=2.5), 0.0, 0.45)
+    music.add(pad([38], flash + 0.4, cutoff=250, attack=2.0), 0.0, 0.5)
+    for lt in E["lightning"]:
+        fx.add(thunder(), lt + 0.08, 0.55, pan=rng.uniform(-0.5, 0.5))
+    # a heartbeat that speeds up as the token rises (the hope)
+    hb, step = 1.0, 1.0
+    while hb < flash - 0.4:
+        music.add(heartbeat(), hb, 0.6)
+        music.add(heartbeat(), hb + 0.22, 0.4)
+        hb += step
+        step = max(0.5, step * 0.93)
+    for i, m in enumerate([74, 77, 81, 79, 74, 77, 81, 84, 81, 77, 86, 89]):
+        music.add(bell(m, 2.2), 1.2 + i * 0.52, 0.16, pan=(-0.5 if i % 2 else 0.5))
+    fx.add(whoosh(1.0), TT["rarest"][0] - 0.9, 0.3)
+    fx.add(boom(2.0), TT["rarest"][0], 0.35)
+    fx.add(riser(2.4), flash - 2.4, 0.6)
+    fx.add(boom(3.5), flash, 0.95)
     fx.add(sparkle(1.5), flash + 0.05, 0.5)
 
-    # --- 6-14 : epic reveal -------------------------------------------
-    bar = 4 * BEAT
+    # --- 8-16 : sunrise, the crew assembles ---------------------------
     t = S["reveal"][0]
     i = 0
     while t < S["reveal"][1] - 0.01:
         root, notes = CHORDS[i % 4]
-        music.add(pad(notes + [notes[0] + 12], bar, cutoff=1400 + 300 * i, attack=0.3), t, 0.42)
+        music.add(pad(notes + [notes[0] + 12], bar, cutoff=1400 + 400 * i, attack=0.3), t, 0.42)
         music.add(bass(root, bar), t, 0.45)
         music.add(taiko(), t, 0.7)
-        if i >= 1:
-            music.add(taiko(pitch=90), t + 2 * BEAT, 0.5)
+        music.add(taiko(pitch=90), t + 2 * BEAT, 0.5)
         if i >= 2:
-            for b in (1, 3):
-                music.add(taiko(1.0, 110), t + b * BEAT + BEAT / 2, 0.35, pan=0.3)
+            for b in range(4):
+                music.add(kick(), t + b * BEAT, 0.55)
+                music.add(hat(), t + b * BEAT + BEAT / 2, 0.15, pan=0.4)
         t += bar
         i += 1
-    tt = C.TEXT_TIMING["assembling"][0]
-    fx.add(whoosh(0.5), tt - 0.5, 0.5)
-    fx.add(boom(2.0), tt, 0.6)
-    fx.add(riser(1.6), S["crew"][0] - 1.6, 0.4)
+    fx.add(boom(2.0), TT["one_drop"][0], 0.55)
+    for k, a in enumerate(E["crew_appear"]):
+        fx.add(whoosh(0.4), a - 0.4, 0.5, pan=(-0.4 if k % 2 else 0.4))
+        fx.add(boom(1.4), a, 0.5)
+        fx.add(sparkle(0.9), a + 0.05, 0.3)
+    fx.add(riser(1.8), S["climax"][0] - 1.8, 0.45)
 
-    # --- 14-22 : the crew assembles ----------------------------------
-    t = S["crew"][0]
-    i = 0
-    while t < S["crew"][1] - 0.01:
-        root, notes = CHORDS[i % 4]
-        music.add(pad(notes + [notes[1] + 12], bar, cutoff=2400, attack=0.05), t, 0.33)
-        for b in range(4):
-            bt = t + b * BEAT
-            music.add(kick(), bt, 0.8)
-            music.add(bass(root, BEAT / 2), bt, 0.42)
-            music.add(bass(root + 12, BEAT / 2), bt + BEAT / 2, 0.3)
-            music.add(hat(), bt + BEAT / 2, 0.18, pan=0.4)
-            music.add(hat(), bt, 0.1, pan=0.4)
-            if b in (1, 3):
-                music.add(snare(), bt, 0.5)
-            music.add(strings_stab(notes, 0.2), bt + BEAT * 0.75, 0.15, pan=-0.3)
-        t += bar
-        i += 1
-    shot = (S["crew"][1] - S["crew"][0]) / len(C.CREW)
-    for k in range(len(C.CREW)):
-        a = S["crew"][0] + k * shot + 8 / C.FPS
-        fx.add(whoosh(0.45), a - 0.45, 0.55, pan=(-0.4 if k % 2 else 0.4))
-        fx.add(boom(1.6), a, 0.55)
-        fx.add(sparkle(1.0), a + 0.05, 0.35)
-
-    # --- 22-30 : climax ---------------------------------------------------
+    # --- 16-17.75 : wind-up, Gum-Gum, grab ------------------------------
     t0 = S["climax"][0]
-    music.add(pad([62, 65, 69, 74], impact - t0, cutoff=1200, attack=0.2), t0, 0.35)
-    music.add(bass(38, impact - t0 - 0.5), t0, 0.4)
-    # snare roll accelerating
-    tr = t0 + 0.4
-    step = 0.25
-    while tr < impact - 0.55:
-        music.add(snare(0.15), tr, 0.18 + 0.4 * (tr - t0) / (impact - t0))
+    music.add(pad([62, 65, 69, 74], boom_t - t0, cutoff=1200, attack=0.2), t0, 0.35)
+    tr, step = t0 + 0.1, 0.18
+    while tr < E["launch"] - 0.1:
+        music.add(snare(0.15), tr, 0.2 + 0.4 * (tr - t0) / (E["launch"] - t0))
         tr += step
-        step = max(0.06, step * 0.9)
-    fx.add(riser(1.5), impact - 2.0, 0.6)
-    fx.add(whoosh(0.4), impact - 0.42, 0.7)          # the arm launch (silence gap before)
-    fx.add(boom(4.0), impact, 1.0)
-    fx.add(taiko(2.0, 55), impact, 0.8)
-    fx.add(sparkle(2.0), impact + 0.1, 0.5)
+        step = max(0.06, step * 0.88)
+    fx.add(whoosh(0.5, rising=False), E["launch"], 0.8)          # the stretch
+    fx.add(taiko(1.0, 140), E["grab"], 0.6)                       # the catch
+    fx.add(boom(4.5), boom_t, 1.0)                                # EXPLOSION
+    fx.add(taiko(2.0, 55), boom_t, 0.8)
+    fx.add(sparkle(2.0), boom_t + 0.1, 0.55)
+    fx.add(sparkle(2.0), boom_t + 0.9, 0.4)
 
-    # --- anthem: drop + finale ---------------------------------------
-    t = impact + 0.25
+    # --- anthem drop, emotional breakdown, final rise --------------------
+    breakdown = (S["finale"][0], TT["final_lines"][1][0])       # 26.0 -> 29.0: soft
+    logo = E["logo"]
+    end = DUR - 1.0
+    t = boom_t + 0.2
     i = 0
-    end = DUR - 1.2
     while t < end:
         root, notes = CHORDS[i % 4]
         length = min(bar, end - t)
-        music.add(pad(notes + [notes[0] + 12, notes[2] + 12], length, cutoff=3200, attack=0.05), t, 0.35)
+        soft = breakdown[0] <= t < breakdown[1]
+        music.add(pad(notes + [notes[0] + 12, notes[2] + 12], length, cutoff=2200 if soft else 3200,
+                      attack=0.3 if soft else 0.05), t, 0.7 if soft else 0.35)
         for b in range(4):
             bt = t + b * BEAT
             if bt >= end:
                 break
+            if breakdown[0] <= bt < breakdown[1]:
+                music.add(bell(notes[b % 3] + 12, 1.5), bt, 0.3)        # gentle, emotional
+                continue
             music.add(kick(), bt, 0.85)
             music.add(bass(root, BEAT * 0.9), bt, 0.45)
             music.add(hat(), bt + BEAT / 2, 0.2, pan=0.4)
@@ -315,19 +329,22 @@ def build():
                 music.add(taiko(0.9, 100), bt, 0.25)
         t += bar
         i += 1
-    # lead melody over the drop
-    tm = impact + 0.25 + bar
-    for m, beats in MELODY:
-        d = beats * BEAT
-        if tm + d > DUR - 1.0:
-            break
-        music.add(lead(m, d * 0.95), tm, 0.22, pan=0.1)
-        music.add(lead(m - 12, d * 0.95), tm, 0.1, pan=-0.1)
-        tm += d
-    for (a, _b) in C.TEXT_TIMING["final_lines"]:
+    # heroic lead over the drop, reprised after the breakdown
+    for start, stop in ((boom_t + 0.2 + bar, breakdown[0] - 0.1), (breakdown[1], end)):
+        tm = start
+        for m, beats in MELODY:
+            d = beats * BEAT
+            if tm + d > stop:
+                break
+            music.add(lead(m, d * 0.95), tm, 0.22, pan=0.1)
+            music.add(lead(m - 12, d * 0.95), tm, 0.1, pan=-0.1)
+            tm += d
+    for key in ("days_free", "two_times"):
+        fx.add(whoosh(0.35), TT[key][0] - 0.35, 0.45)
+        fx.add(boom(1.6), TT[key][0], 0.6)
+    for (a, _b) in TT["final_lines"]:
         fx.add(whoosh(0.35), a - 0.35, 0.45)
         fx.add(boom(1.5), a, 0.55)
-    logo = C.TEXT_TIMING["logo"][0]
     fx.add(riser(1.0), logo - 1.0, 0.5)
     fx.add(boom(3.0), logo, 1.0)
     fx.add(taiko(2.5, 50), logo, 0.8)
@@ -340,7 +357,6 @@ def build():
     Rr = reverb(music.R, 2.1, 0.3) + reverb(fx.R, 1.3, 0.15)
     st = np.stack([L, Rr], axis=1)
     st = np.tanh(st * 1.2 / max(1e-6, np.percentile(np.abs(st), 99.9)))   # glue / limiter
-    # fade in / out
     fi, fo = int(0.3 * SR), int(1.0 * SR)
     st[:fi] *= np.linspace(0, 1, fi)[:, None]
     st[-fo:] *= np.linspace(1, 0, fo)[:, None]

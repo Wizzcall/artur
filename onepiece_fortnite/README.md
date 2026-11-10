@@ -1,18 +1,17 @@
-# ONE PIECE x FORTNITE — "Treasure Hunters" (vertical 3D short)
+# ONE PIECE x FORTNITE — "Pirate Shop Access" (vertical 3D short)
 
-A 37-second motivational 3D animation (1080x1920, 30 fps, YouTube Shorts) generated
-**100 % from code**: Blender Python in background mode for the scene, animation and render,
-numpy for the soundtrack, FFmpeg for the final MP4. No assets, no Blender UI.
+A 36-second cinematic, motivational 3D animation (1080x1920, 30 fps, YouTube Shorts) about the
+legendary **Pirate Shop Token**, generated **100 % from code**: Blender Python in background mode
+for the scene, animation and render, numpy for the soundtrack, FFmpeg for the final MP4.
 
 ## Storyboard
 
 | Time | Section | What happens |
 |------|---------|--------------|
-| 0–6 s | `token` | Dark night ocean; the glowing **Pirate Shop Token** rises out of the water, spinning, with motes and god rays. A blinding flash turns night into sunrise. |
-| 6–14 s | `reveal` | Crane-up reveal of the pirate ship (sheep figurehead, straw-hat sail) at sunrise, then a swoop to **Luffy** at the bow. Title: **THE CREW IS ASSEMBLING** |
-| 14–22 s | `crew` | **Zoro** (green slashes, 3 swords), **Nami** (lightning, Clima-Tact + tangerine), **Sanji** (flame kick), **Chopper** (sparkles, hop) appear one by one. Title: **ONE BY ONE** + names |
-| 22–30 s | `climax` | Luffy winds up, **Gum-Gum** stretches his arm into the sky and punches a giant treasure chest, which explodes into a rain of V-Bucks, tokens and glowing straw-hat symbols. The camera circles the crew. |
-| 30–37 s | `finale` | The crew faces the camera: **THE TREASURE IS HERE / USE YOUR TOKEN / CLAIM YOUR CREW**, then **ONE PIECE x FORTNITE** with Luffy's fist raised. |
+| 0–8 s | `storm` | Stormy night, rain, lightning. Opened **empty chests** drift in the waves (the grind). The golden **Pirate Shop Token** rises from the depths, spinning and glowing; the camera orbits and rises with it. **THE RAREST TREASURE**. The token flares → sunrise. |
+| 8–16 s | `reveal` | The token floats higher; the camera pulls back to reveal the pirate ship at sunrise. Luffy at the bow looks up at it with determination. Zoro, Nami, Sanji and Chopper appear behind him one by one with energy effects. **ONE DROP CAN CHANGE EVERYTHING** |
+| 16–26 s | `climax` | Luffy winds up, **Gum-Gum** stretches his arm and grabs the token → massive golden explosion: V-Bucks, FREE skin cards, Going Merry gliders and the token multiplying fill the sky. The crew celebrates; the camera circles them. **14 DAYS FREE** → **TWO TIMES (2026 + 2027)** |
+| 26–36 s | `finale` | The crew faces the camera, the token floating above them. **KEEP OPENING / THE TOKEN IS OUT THERE / CLAIM YOUR CREW**, then **ONE PIECE x FORTNITE — PIRATE SHOP ACCESS**. |
 
 ## Quick start
 
@@ -54,12 +53,13 @@ use `final`.
 | I want to change… | Edit |
 |---|---|
 | Any on-screen text, text timing | `config.py → TEXT`, `TEXT_TIMING` |
+| Story beats (lightning, crew entrances, grab, explosion, logo) — shared by picture AND music | `config.py → EVENTS` |
 | Section lengths / total duration | `config.py → SECTIONS` (seconds; keep contiguous) |
 | Colors (straw-hat yellow, Luffy red, ocean, gold, Zoro green…) | `config.py → COLORS` |
 | Crew order, positions on deck, effect type & color | `config.py → CREW` |
 | Character looks | `op_lib/characters.py → build_luffy / build_zoro / …` |
 | Character poses | `op_lib/characters.py → POSES` (degrees per joint) |
-| Camera moves, timing of actions | `build_scene.py → direct_token / direct_reveal / direct_crew / direct_climax / direct_finale` |
+| Camera moves, timing of actions | `build_scene.py → direct_storm / direct_reveal / direct_climax / direct_finale` |
 | Music (BPM, chords, melody) | `make_music.py → BPM, CHORDS, MELODY` |
 | Final encode (CRF, sharpen, vignette) | `assemble.sh` |
 
@@ -71,12 +71,12 @@ onepiece_fortnite/
 ├── build_scene.py       # MAIN Blender script: builds scene + storyboard + render
 ├── op_lib/
 │   ├── utils.py         # keyframe helpers, primitives, materials
-│   ├── textures.py      # procedural emblem / token / V-Buck / flag textures (Pillow)
-│   ├── world.py         # night→sunrise sky, stars, animated ocean, lights
+│   ├── textures.py      # procedural emblem / token / V-Buck / FREE skin cards / flag (Pillow)
+│   ├── world.py         # storm sky (clouds, lightning) → sunrise, stormy→calm ocean, lights
 │   ├── ship.py          # stylized pirate ship (sheep figurehead, sails, flag)
 │   ├── characters.py    # puppet rig + Luffy, Zoro, Nami, Sanji, Chopper + poses
-│   ├── props.py         # Pirate Shop Token, treasure chest, rain templates
-│   ├── effects.py       # motes, light rays, rings, bursts, slashes, lightning, fire, rain
+│   ├── props.py         # Pirate Shop Token, glider, empty chests, treasure-rain templates
+│   ├── effects.py       # storm rain, motes, light rays, rings, bursts, slashes, lightning, fire, treasure rain
 │   ├── hud.py           # 3D titles locked to the camera, flashes, fades
 │   └── camera.py        # camera rig: dolly, cuts, orbit, shake, punch zoom
 ├── make_music.py        # procedural epic soundtrack (numpy)

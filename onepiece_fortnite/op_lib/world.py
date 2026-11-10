@@ -14,7 +14,7 @@ from .utils import (key, key_loc, mat_basic, obj_from_mesh, mesh_plane, link,
 SUN_DIR = Vector((-0.55, -0.80, 0.16)).normalized()
 
 
-def build_world(day_switch_frame, day_switch_len=12):
+def build_world(day_switch_frame, day_switch_len=12, lightning_frames=()):
     """World shader.  A 'DayMix' value node (0 = night, 1 = sunrise) is
     keyframed so the whole sky changes in sync with the token flash."""
     w = bpy.data.worlds.new("SkyWorld")
@@ -54,10 +54,50 @@ def build_world(day_switch_frame, day_switch_len=12):
     star_mask.inputs[0].default_value = 1.0
     L(star_ramp.outputs["Color"], star_mask.inputs[1])
     L(above.outputs[0], star_mask.inputs[2])
+    # storm clouds: billowy noise lit faintly; they hide most of the stars
+    cn = N("ShaderNodeTexNoise")
+    cn.inputs["Scale"].default_value = 2.2
+    cn.inputs["Detail"].default_value = 8.0
+    cn.inputs["Roughness"].default_value = 0.6
+    L(tc.outputs["Generated"], cn.inputs["Vector"])
+    cramp = N("ValToRGB" if False else "ShaderNodeValToRGB")
+    cramp.color_ramp.elements[0].position = 0.42
+    cramp.color_ramp.elements[0].color = (0, 0, 0, 1)
+    cramp.color_ramp.elements[1].position = 0.75
+    cramp.color_ramp.elements[1].color = (0.035, 0.045, 0.07, 1)
+    L(cn.outputs["Fac"], cramp.inputs[0])
+    stars_dim = N("ShaderNodeMixRGB"); stars_dim.blend_type = "MULTIPLY"
+    stars_dim.inputs[0].default_value = 1.0
+    L(star_mask.outputs["Color"], stars_dim.inputs[1])
+    stars_dim.inputs[2].default_value = (0.25, 0.25, 0.25, 1)
     night_add = N("ShaderNodeMixRGB"); night_add.blend_type = "ADD"
     night_add.inputs[0].default_value = 1.0
     L(night.outputs["Color"], night_add.inputs[1])
-    L(star_mask.outputs["Color"], night_add.inputs[2])
+    L(stars_dim.outputs["Color"], night_add.inputs[2])
+    night_cloud = N("ShaderNodeMixRGB"); night_cloud.blend_type = "ADD"
+    night_cloud.inputs[0].default_value = 1.0
+    L(night_add.outputs["Color"], night_cloud.inputs[1])
+    L(cramp.outputs["Color"], night_cloud.inputs[2])
+    # lightning: brightens the clouds (keyframed 'Lightning' value)
+    lval = N("ShaderNodeValue"); lval.name = "Lightning"
+    lcol = N("ShaderNodeMixRGB"); lcol.blend_type = "MULTIPLY"
+    lcol.inputs[0].default_value = 1.0
+    L(cn.outputs["Fac"], lcol.inputs[1])
+    lcol.inputs[2].default_value = (0.6, 0.7, 1.0, 1)
+    lmul = N("ShaderNodeVectorMath"); lmul.operation = "SCALE"
+    L(lcol.outputs["Color"], lmul.inputs[0])
+    L(lval.outputs[0], lmul.inputs["Scale"])
+    night_final = N("ShaderNodeMixRGB"); night_final.blend_type = "ADD"
+    night_final.inputs[0].default_value = 1.0
+    L(night_cloud.outputs["Color"], night_final.inputs[1])
+    L(lmul.outputs["Vector"], night_final.inputs[2])
+    sockl = lval.outputs[0]
+    sockl.default_value = 0.0
+    sockl.keyframe_insert("default_value", frame=1)
+    for lf in lightning_frames:
+        for df, v in ((-1, 0.0), (0, 2.5), (2, 0.4), (3, 1.8), (7, 0.0)):
+            sockl.default_value = v
+            sockl.keyframe_insert("default_value", frame=lf + df)
 
     # --- Sunrise gradient + sun glow ------------------------------------
     day = N("ShaderNodeValToRGB")
@@ -96,7 +136,7 @@ def build_world(day_switch_frame, day_switch_len=12):
     daymix = N("ShaderNodeValue"); daymix.name = "DayMix"; daymix.label = "DayMix"
     mix = N("ShaderNodeMixRGB")
     L(daymix.outputs[0], mix.inputs[0])
-    L(night_add.outputs["Color"], mix.inputs[1])
+    L(night_final.outputs["Color"], mix.inputs[1])
     L(sun_col.outputs["Color"], mix.inputs[2])
     bg = N("ShaderNodeBackground")
     L(mix.outputs["Color"], bg.inputs["Color"])
@@ -115,7 +155,7 @@ def build_world(day_switch_frame, day_switch_len=12):
     return w
 
 
-def build_ocean(end_frame):
+def build_ocean(end_frame, calm_frame=None):
     """Big animated ocean.  The ocean drifts backwards (-Y) so the ship
     seems to sail forward while staying at the origin."""
     me = mesh_plane("OceanBase", 2, 2)
@@ -143,6 +183,16 @@ def build_ocean(end_frame):
     C_.keyframe_new_interpolation_type = "LINEAR"
     mod.keyframe_insert("time", frame=end_frame)
     C_.keyframe_new_interpolation_type = "BEZIER"
+    if calm_frame:
+        # stormy waves at night -> calm sea at sunrise
+        for f, ws, ch in ((calm_frame - 1, 1.9, 1.6), (calm_frame, 0.9, 1.1)):
+            mod.wave_scale = ws
+            mod.choppiness = ch
+            _pref = bpy.context.preferences.edit
+            _pref.keyframe_new_interpolation_type = "CONSTANT"
+            mod.keyframe_insert("wave_scale", frame=f)
+            mod.keyframe_insert("choppiness", frame=f)
+            _pref.keyframe_new_interpolation_type = "BEZIER"
     for p in ocean.data.polygons:
         p.use_smooth = True
     ocean.location = (-150, -150, 0)      # 300 m square centered on origin
@@ -177,7 +227,7 @@ def build_ocean(end_frame):
     return ocean
 
 
-def build_lights(day_switch_frame, day_switch_len=12):
+def build_lights(day_switch_frame, day_switch_len=12, lightning_frames=()):
     """Sun (moon at night -> warm sunrise), plus a front fill and a rim."""
     f0, f1 = day_switch_frame, day_switch_frame + day_switch_len
 
@@ -223,8 +273,22 @@ def build_lights(day_switch_frame, day_switch_len=12):
         rim_d.energy = en
         rim_d.keyframe_insert("energy", frame=f)
 
+    # lightning key light: cold flashes during the storm
+    ld = bpy.data.lights.new("LightningSun", "SUN")
+    lo = bpy.data.objects.new("LightningSun", ld)
+    link(lo)
+    ld.color = (0.7, 0.8, 1.0)
+    ld.angle = math.radians(10)
+    lo.rotation_euler = Vector((0.3, 0.2, 1.0)).normalized().to_track_quat("Z", "Y").to_euler()
+    ld.energy = 0
+    ld.keyframe_insert("energy", frame=1)
+    for lf in lightning_frames:
+        for df, v in ((-1, 0.0), (0, 6.0), (2, 1.0), (3, 4.0), (7, 0.0)):
+            ld.energy = v
+            ld.keyframe_insert("energy", frame=lf + df)
+
     # moon (night only) - an emissive sphere far away
-    moon_mat = mat_emit_fade("MoonMat", (0.85, 0.9, 1.0), 6.0)
+    moon_mat = mat_emit_fade("MoonMat", (0.85, 0.9, 1.0), 1.5)   # veiled by storm clouds
     moon = sphere("Moon", 6.0, moon_mat, loc=(-60, 180, 70))
     no_shadow(moon)
     moon.color = (1, 1, 1, 1)

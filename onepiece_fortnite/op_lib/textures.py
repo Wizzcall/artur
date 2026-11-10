@@ -5,6 +5,7 @@ Procedural 2D textures drawn with Pillow (no external assets needed):
   - token_face.png    the Pirate Shop Token coin face
   - vbuck.png         blue "V" coin
   - sail.png          sail with a big emblem
+  - card_*.png        "FREE" Item-Shop style skin cards (3 rarities)
 Re-generated on every build, so editing colors here is enough.
 """
 import os
@@ -138,6 +139,57 @@ def make_vbuck(path, size=512):
     im.save(path)
 
 
+CARD_STYLES = {
+    # name: (top color, bottom color, outfit color, accent)
+    "legendary": ((255, 190, 60), (200, 70, 10), (210, 20, 20), (255, 225, 90)),
+    "epic":      ((200, 110, 255), (90, 20, 170), (40, 150, 60), (240, 240, 240)),
+    "rare":      ((90, 200, 255), (20, 70, 200), (25, 25, 30), (255, 215, 80)),
+}
+
+
+def make_card(path, style, w=512, h=720):
+    """Item-Shop style skin card: rarity gradient, a stylized outfit
+    silhouette and a big FREE banner."""
+    top, bot, outfit, accent = CARD_STYLES[style]
+    im = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    grad = Image.new("RGBA", (w, h))
+    gd = ImageDraw.Draw(grad)
+    for y in range(h):
+        t = y / (h - 1)
+        gd.line((0, y, w, y), fill=tuple(int(a + (b - a) * t) for a, b in zip(top, bot)) + (255,))
+    mask = Image.new("L", (w, h), 0)
+    ImageDraw.Draw(mask).rounded_rectangle((0, 0, w - 1, h - 1), radius=40, fill=255)
+    im.paste(grad, (0, 0), mask)
+    # light rays (drawn on their own layer, then blended inside the card)
+    cx, cy = w / 2, h * 0.42
+    rays = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    rd = ImageDraw.Draw(rays)
+    for i in range(16):
+        a = i * math.pi / 8
+        rd.polygon([(cx, cy), (cx + math.cos(a) * w, cy + math.sin(a) * w),
+                    (cx + math.cos(a + 0.12) * w, cy + math.sin(a + 0.12) * w)], fill=(255, 255, 255, 40))
+    clipped = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    clipped.paste(rays, (0, 0), Image.composite(rays.getchannel("A"), Image.new("L", (w, h), 0), mask))
+    im.alpha_composite(clipped)
+    d = ImageDraw.Draw(im)
+    # outfit silhouette
+    skin = (240, 190, 150, 255)
+    d.ellipse((cx - 62, cy - 210, cx + 62, cy - 86), fill=skin)                  # head
+    d.rounded_rectangle((cx - 95, cy - 80, cx + 95, cy + 120), radius=40, fill=outfit + (255,))
+    d.rounded_rectangle((cx - 140, cy - 70, cx - 95, cy + 90), radius=22, fill=outfit + (255,))
+    d.rounded_rectangle((cx + 95, cy - 70, cx + 140, cy + 90), radius=22, fill=outfit + (255,))
+    d.rounded_rectangle((cx - 85, cy + 110, cx - 12, cy + 260), radius=20, fill=(30, 40, 90, 255))
+    d.rounded_rectangle((cx + 12, cy + 110, cx + 85, cy + 260), radius=20, fill=(30, 40, 90, 255))
+    d.ellipse((cx - 120, cy - 215, cx + 120, cy - 165), fill=accent + (255,))   # hat brim
+    d.chord((cx - 70, cy - 290, cx + 70, cy - 150), 180, 360, fill=accent + (255,))
+    # FREE banner
+    d.rectangle((0, h - 170, w, h - 60), fill=(255, 255, 255, 235))
+    f = _font(92)
+    d.text((cx, h - 115), "FREE", font=f, fill=(20, 20, 30, 255), anchor="mm")
+    d.rounded_rectangle((6, 6, w - 7, h - 7), radius=36, outline=(255, 255, 255, 255), width=10)
+    im.save(path)
+
+
 def make_all():
     os.makedirs(C.TEXTURE_DIR, exist_ok=True)
     paths = {
@@ -152,6 +204,9 @@ def make_all():
     make_sail(paths["sail"])
     make_token(paths["token"])
     make_vbuck(paths["vbuck"])
+    for st in CARD_STYLES:
+        paths[f"card_{st}"] = os.path.join(C.TEXTURE_DIR, f"card_{st}.png")
+        make_card(paths[f"card_{st}"], st)
     return paths
 
 
