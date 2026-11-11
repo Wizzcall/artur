@@ -104,7 +104,85 @@ SPOT2 = dict(
     rages=[(135.0, "SORS DE LÀ !!", 2.2)],
 )
 
-SPOTS = {s["key"]: s for s in (SPOT1, SPOT2)}
+_S3 = "spot3_loguetown"
+SPOT3 = dict(
+    key=_S3, number=3, name="LOGUETOWN", music="loguetown", hdr=False,
+    # One continuous match: clipA (0-3:00 after landing), then clipB (~27 s of
+    # game time later, read from the storm timer), then clip2_part2 (after B).
+    clips=[(_p(_S3, "map.jpg"), -3.5, 3.5)]
+    + [(_p(_S3, f"clipA_part{k + 1}_{30 * k}-{30 * k + 30}s.mp4"), 30.0 * k, 29.76 if k == 5 else 30.0)
+       for k in range(6)]
+    + [(_p(_S3, "clipB_part1_0-30s.mp4"), 206.8, 30.0),
+       (_p(_S3, "clipB_part2_30-60s.mp4"), 236.8, 29.6),
+       (_p(_S3, "clip2_part2_30-60s.mp4"), 300.0, 29.5)],
+    t0=1.9,                       # first gameplay frame, just after touch-down
+    target=(1061, 588),           # map marker on the screenshot
+    segments=[
+        (-3.5, 0.0, 1),           # map: aiming at the spot
+        (1.9, 4.5, 1),            # chest 1 on the beach
+        (4.5, 15.6, 3),
+        (15.6, 17.6, 1),          # chest 2 (house)
+        (17.6, 20.4, 2),
+        (20.4, 22.4, 1),          # chest 3 (rare, purple)
+        (22.4, 26.0, 2),
+        (26.0, 28.0, 1),          # chest 4
+        (28.0, 65.5, 6),          # run + swim to the boat
+        (65.5, 68.0, 1),          # chest 5 on the boat
+        (68.0, 93.6, 5),          # buried chests: dig
+        (93.6, 98.4, 1),          # chests 6 + 7 (big pop)
+        (98.4, 140.3, 6),
+        (140.3, 142.3, 1),        # chest 8 on the pier
+        (142.3, 146.6, 2),
+        (146.6, 148.6, 1),        # chest 9
+        (148.6, 152.8, 2),
+        (152.8, 154.8, 1),        # chest 10 (shack)
+        (154.8, 171.0, 4),
+        (171.0, 173.0, 1),        # chest 11 (bamboo)
+        (173.0, 176.2, 2),
+        (176.2, 179.7, 1),        # chest 12
+        (208.7, 212.5, 2),        # 27 s later: chrono runs out
+        (212.5, 225.4, 6),
+        (225.4, 227.4, 1),        # bonus chests (after 3:30)
+        (227.4, 234.8, 4),
+        (234.8, 236.6, 1),
+        (237.05, 244.6, 4),
+        (244.6, 246.6, 1),
+        (301.9, 307.8, 3),
+        (307.8, 310.0, 1),
+    ],
+    events=[
+        (3.0, 1190, 300, "chest"),
+        (16.6, 1000, 575, "chest"),
+        (21.4, 1000, 690, "chest"),
+        (27.0, 1035, 540, "chest"),
+        (67.1, 1110, 615, "chest"),
+        (94.8, 960, 300, "chest"),
+        (97.4, 1350, 230, "chest"),
+        (141.3, 760, 560, "chest"),
+        (147.6, 1000, 575, "chest"),
+        (153.8, 690, 385, "chest"),
+        (172.0, 1075, 615, "chest"),
+        (177.2, 690, 575, "chest"),
+        # after 3:30 -> shown as bonus, not counted
+        (226.4, 1000, 385, "chest"),
+        (235.7, 960, 615, "chest"),
+        (245.6, 1110, 650, "chest"),
+        (308.8, 690, 770, "chest"),
+    ],
+    texts=[
+        (17.0, "4 COFFRES EN 25 S !", "DÉPART ULTRA RAPIDE", "legendary", 2.0),
+        (21.0, "COFFRE RARE", None, "epic", 1.6),
+        (40.0, "CAP SUR LE BATEAU", "À LA NAGE", "rare", 2.2),
+        (75.0, "COFFRES ENTERRÉS", "ÇA SE CREUSE !", "epic", 2.2),
+        (98.0, "DOUBLE COFFRE !", None, "legendary", 1.8),
+        (120.0, "7 COFFRES EN 1:36", None, "epic", 2.0),
+        (160.0, "10 COFFRES EN 2:32", "LE RYTHME EST FOU", "legendary", 2.2),
+        (178.0, "12 COFFRES EN 2:55 !", None, "legendary", 1.8),
+        (214.0, "BONUS : LA SUITE DE LA GAME", "NE COMPTE PAS AU CLASSEMENT", "rare", 2.4),
+    ],
+)
+
+SPOTS = {s["key"]: s for s in (SPOT1, SPOT2, SPOT3)}
 
 if __name__ == "__main__":
     import sys

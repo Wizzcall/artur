@@ -102,8 +102,14 @@ def render_base(spec, tl, work):
             continue
         sp = p["speed"]
         src_dur = p["frames"] / FPS * sp
-        vf = (HDR_VF if spec.get("hdr") else SDR_VF) + \
-             f",scale={W}:{H}:flags=lanczos,setpts=(PTS-STARTPTS)/{sp},fps={FPS},setsar=1"
+        a, b = p["local0"], p["local0"] + src_dur
+        is_img = p["clip"].lower().endswith((".jpg", ".jpeg", ".png"))
+        # cut on the file's own timestamps (video may start later than audio in
+        # some recordings): trim both streams on the same clock, and let fps
+        # pad the head with the first frame if the video starts after `a`.
+        grade = "" if is_img else (HDR_VF if spec.get("hdr") else SDR_VF) + ","
+        vf = (f"trim=start={a:.4f}:end={b + 0.1:.4f},setpts=(PTS-{a:.4f}/TB)/{sp},"
+              f"fps={FPS}:start_time=0,{grade}scale={W}:{H}:flags=lanczos,setsar=1")
         tempo, s = [], sp
         while s > 2.0 + 1e-9:
             tempo.append("atempo=2.0")
@@ -111,9 +117,15 @@ def render_base(spec, tl, work):
         if abs(s - 1) > 1e-6:
             tempo.append(f"atempo={s:.6f}")
         gain = 1.0 if sp == 1 else 0.22
-        af = ",".join(["asetpts=PTS-STARTPTS"] + tempo +
+        af = ",".join([f"atrim=start={a:.4f}:end={b + 0.1:.4f}", "asetpts=PTS-STARTPTS"] + tempo +
                       [f"volume={gain}", f"aresample={SR}", f"apad", f"atrim=duration={p['frames'] / FPS:.6f}"])
-        run(["ffmpeg", "-y", "-ss", f"{p['local0']:.4f}", "-t", f"{src_dur + 0.2:.4f}", "-i", p["clip"],
+        if is_img:
+            inputs = ["-loop", "1", "-framerate", str(FPS), "-t", f"{b + 0.2:.4f}", "-i", p["clip"],
+                      "-f", "lavfi", "-t", f"{b + 0.2:.4f}", "-i", f"anullsrc=r={SR}:cl=stereo"]
+            maps = ["-map", "0:v", "-map", "1:a"]
+        else:
+            inputs, maps = ["-i", p["clip"]], []
+        run(["ffmpeg", "-y", *inputs, *maps,
              "-vf", vf, "-af", af, "-frames:v", str(p["frames"]), "-ac", "2",
              "-c:v", "libx264", "-preset", "veryfast", "-crf", "14", "-pix_fmt", "yuv420p",
              "-c:a", "pcm_s16le", out])
@@ -169,8 +181,15 @@ def render_overlays(spec, tl, base, out_video, work, end_dur=6.0):
     nframes = int(round(total * FPS))
     base_end = tl.duration
     last_g = tl.pieces[-1]["g1"]
-    run_end = last_g - t0
-    final_count = len(events)
+    limit_g = t0 + CHRONO
+    over = last_g > limit_g                      # footage continues after 3:30
+    limit_edit = tl.edit_at(limit_g) if over else None
+    run_end = min(last_g - t0, CHRONO)
+    # openings after 3:30 are shown as "hors chrono" bonus, never counted
+    events = [(g, x, y, kind if g <= limit_g else "bonus") for g, x, y, kind in events]
+    counted = [te for (g, *_), te in zip(events, ev_edit) if g <= limit_g]
+    final_count = len(counted)
+    n_bonus = len(events) - final_count
 
     C = Cache()
     title = O.box_3d(f"SPOT {spec['number']} : {spec['name']}", "CHRONO 3:30", rarity="epic", size=62)
@@ -217,12 +236,12 @@ def render_overlays(spec, tl, base, out_video, work, end_dur=6.0):
         # --- chrono + counter (after landing)
         if run_t >= 0 or in_end:
             k = ease_out_back(dt / 0.35) if dt < 0.4 else 1
-            rem = CHRONO - (run_end if in_end else run_t)
+            rem = max(0.0, CHRONO - (run_end if in_end else min(run_t, CHRONO)))
             timer = C.get_or(("timer", round(rem * 10)), lambda: O.circular_timer(rem, CHRONO))
             if not in_end:
                 paste_center(cv, timer, W - 160 + (1 - k) * 400, 165)
-            n = sum(1 for e in ev_edit if e <= t)
-            last = max([e for e in ev_edit if e <= t], default=-9)
+            n = sum(1 for e in counted if e <= t)
+            last = max([e for e in counted if e <= t], default=-9)
             q = round((t - last) / 0.6 * 20)
             q = q if 0 < q < 20 else 0
             cnt = C.get_or(("cnt", n, q), lambda: O.chest_counter(n, pop=q / 20))
@@ -235,14 +254,30 @@ def render_overlays(spec, tl, base, out_video, work, end_dur=6.0):
             if -0.25 < d < 1.0 and not in_end:
                 ring = C.get_or(("ering", kind, round(d * 15)),
                                 lambda: O.ring_3d(110, O.YELLOW if kind == "chest" else O.CYAN, d * 2))
+                if kind == "bonus":
+                    ring = C.get_or(("bring", round(d * 15)), lambda: O.ring_3d(110, O.MAGENTA, d * 2))
                 paste_center(cv, ring, x, y + 40, 0.7 + 0.3 * ease_out_back((d + 0.25) / 0.3),
                              1 - ease_out((d - 0.75) / 0.25))
                 lab = C.get_or(("elab", kind), lambda: O.text_3d(
-                    "+1 COFFRE" if kind == "chest" else "+1 BUTIN", 64,
-                    O.YELLOW if kind == "chest" else O.CYAN, O.GOLD if kind == "chest" else O.BLUE,
-                    glow_color=O.GOLD if kind == "chest" else O.CYAN))
+                    {"chest": "+1 COFFRE", "loot": "+1 BUTIN", "bonus": "BONUS HORS CHRONO"}[kind],
+                    64 if kind != "bonus" else 54,
+                    {"chest": O.YELLOW, "loot": O.CYAN, "bonus": (255, 170, 255)}[kind],
+                    {"chest": O.GOLD, "loot": O.BLUE, "bonus": O.PURPLE}[kind],
+                    glow_color={"chest": O.GOLD, "loot": O.CYAN, "bonus": O.MAGENTA}[kind]))
                 if d > 0:
                     paste_center(cv, lab, x, y - 120 - 60 * d, ease_out_back(d / 0.25), 1 - ease_out((d - 0.7) / 0.3))
+
+        # --- end of the 3:30: "TEMPS ÉCOULÉ" + persistent "hors chrono" tag
+        if over and not in_end:
+            d = t - limit_edit
+            if 0 <= d < 2.0:
+                img = C.get_or("ecoule", lambda: O.text_3d("TEMPS ÉCOULÉ !", 150, (255, 90, 80), (190, 0, 30),
+                                                           tilt=-3, glow_color=O.RED))
+                paste_center(cv, img, W / 2, H * 0.42, ease_out_back(d / 0.3), 1 - ease_out((d - 1.7) / 0.3))
+            if d >= 0:
+                tag = C.get_or("hctag", lambda: O.text_3d("HORS CHRONO", 40, (255, 170, 255), O.PURPLE,
+                                                          depth=3, outline=4, alt=True, glow_color=O.MAGENTA))
+                paste_center(cv, tag, W - 160, 300, ease_out_back((d - 0.3) / 0.3))
 
         # --- speed badge
         if not in_end and piece["speed"] > 1:
@@ -279,8 +314,10 @@ def render_overlays(spec, tl, base, out_video, work, end_dur=6.0):
             big = C.get_or("rbig", lambda: O.text_3d(f"{final_count} COFFRES", 190, O.YELLOW, O.GOLD,
                                                      glow_color=O.GOLD))
             paste_center(cv, big, W / 2, 500, ease_out_back((d - 0.35) / 0.45))
-            sub = C.get_or("rsub", lambda: O.box_3d(f"EN {fmt_mmss(run_end)} DE FARM",
-                                                    f"SPOT {spec['number']} / 5", rarity="rare", size=54))
+            sub = C.get_or("rsub", lambda: O.box_3d(
+                f"EN {fmt_mmss(run_end)} DE FARM",
+                f"SPOT {spec['number']} / 5" + (f"  +  {n_bonus} BONUS HORS CHRONO" if n_bonus else ""),
+                rarity="rare", size=54))
             paste_center(cv, sub, W / 2, 780, ease_out_back((d - 0.8) / 0.4))
             paste_center(cv, C.get_or("rcnt", lambda: O.chest_icon(220, open_=True)),
                          W / 2 - 640, 500, ease_out_back((d - 0.5) / 0.4))
@@ -292,7 +329,7 @@ def render_overlays(spec, tl, base, out_video, work, end_dur=6.0):
     err = proc.stderr.read().decode()
     if proc.wait():
         raise RuntimeError(err[-3000:])
-    return dict(t0_edit=t0_edit, ev_edit=ev_edit, texts=[x[0] for x in texts], total=total,
+    return dict(t0_edit=t0_edit, ev_edit=ev_edit, limit_edit=limit_edit, texts=[x[0] for x in texts], total=total,
                 base_end=base_end, final_count=final_count, run_end=run_end)
 
 
@@ -400,6 +437,8 @@ def mix_audio(spec, tl, info, game_wav, out_wav, work):
     for te in info["texts"]:
         add(whoosh, te - 0.05, 0.45)
     add(impact, info["t0_edit"], 0.8)
+    if info.get("limit_edit") is not None:
+        add(impact, info["limit_edit"], 1.0)
     add(impact, info["base_end"], 0.9)
     add(ding, info["base_end"] + 0.4, 0.8)
 
