@@ -232,7 +232,46 @@ SPOT4 = dict(
     ],
 )
 
-SPOTS = {s["key"]: s for s in (SPOT1, SPOT2, SPOT3, SPOT4)}
+_S5 = "spot5_the_chest"
+SPOT5 = dict(
+    key=_S5, number=5, name="FORTERESSE DE LIL' UZI", music="the_chest", hdr=False,
+    clips=[(_p(_S5, "map.jpg"), -3.5, 3.5),
+           (_p(_S5, "clip3_part1_0-30s.mp4"), 0.0, 30.0),
+           (_p(_S5, "clip3_part2_30-60s.mp4"), 30.0, 29.72)],
+    t0=2.5,                       # splash into the cave pool
+    target=(950, 355),            # marker 2 on the zoomed map
+    segments=[
+        (-3.5, 0.0, 1),
+        (1.9, 3.6, 1),            # dive into the water
+        (3.6, 15.4, 4),
+        (15.4, 17.6, 1),          # chest 1 (gold pile)
+        (17.6, 31.8, 4),
+        (31.8, 34.0, 1),          # chest 2 (rare)
+        (34.0, 41.6, 3),
+        (41.6, 43.6, 1),          # chest 3
+        (43.6, 45.8, 2),
+        (45.8, 47.4, 1),          # chest 4 (blue)
+        (47.4, 48.8, 2),
+        (48.8, 51.0, 1),          # chest 5
+        (51.0, 59.7, 4),
+    ],
+    events=[
+        (46.3 - 30.0, 1000, 560, "chest"),
+        (32.4, 720, 560, "chest"),
+        (42.4, 1000, 620, "chest"),
+        (46.7, 1150, 600, "chest"),
+        (49.7, 1150, 560, "chest"),
+    ],
+    texts=[
+        (5.0, "LA GROTTE AU TRÉSOR", "SOUS LA FORTERESSE", "legendary", 2.4),
+        (16.8, "PREMIER COFFRE !", None, "epic", 1.6),
+        (32.8, "COFFRE RARE", None, "epic", 1.6),
+        (50.0, "3 COFFRES EN 7 S !", "LA GROTTE EST BLINDÉE", "legendary", 2.0),
+        (54.0, "5 COFFRES EN 47 S", None, "epic", 2.0),
+    ],
+)
+
+SPOTS = {s["key"]: s for s in (SPOT1, SPOT2, SPOT3, SPOT4, SPOT5)}
 
 if __name__ == "__main__":
     import sys

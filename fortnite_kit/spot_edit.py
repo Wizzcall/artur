@@ -93,12 +93,32 @@ class Timeline:
 
 
 # ----------------------------------------------------------------- step 1
+def normalize_source(path, work):
+    """Constant-30fps copy of a clip on the audio clock (video padded with its
+    first frame if it starts late), so cuts are frame-accurate even for
+    variable-frame-rate phone/console recordings."""
+    import hashlib
+    if path.lower().endswith((".jpg", ".jpeg", ".png")):
+        return path
+    st = os.stat(path)
+    key = hashlib.md5(f"{os.path.realpath(path)}|{st.st_size}|{st.st_mtime}".encode()).hexdigest()[:12]
+    out = os.path.join(work, "..", "_norm", f"{key}.mkv")
+    if not os.path.exists(out):
+        os.makedirs(os.path.dirname(out), exist_ok=True)
+        run(["ffmpeg", "-y", "-i", path, "-vf", f"fps={FPS}:start_time=0,setpts=N/{FPS}/TB",
+             "-af", f"aresample={SR}:async=1:first_pts=0", "-ac", "2",
+             "-c:v", "libx264", "-preset", "veryfast", "-crf", "12", "-pix_fmt", "yuv420p",
+             "-c:a", "pcm_s16le", out + ".tmp.mkv"])
+        os.replace(out + ".tmp.mkv", out)
+    return out
+
+
 def render_base(spec, tl, work):
     pieces = []
     for i, p in enumerate(tl.pieces):
         import hashlib
         key = hashlib.md5(repr((p["clip"], round(p["local0"], 4), p["frames"], p["speed"],
-                                spec.get("hdr"), HDR_VF, SDR_VF)).encode()).hexdigest()[:10]
+                                spec.get("hdr"), HDR_VF, SDR_VF, "norm1")).encode()).hexdigest()[:10]
         out = os.path.join(work, f"piece_{i:03d}_{key}.mkv")
         pieces.append(out)
         if os.path.exists(out):
@@ -127,7 +147,7 @@ def render_base(spec, tl, work):
                       "-f", "lavfi", "-t", f"{b + 0.2:.4f}", "-i", f"anullsrc=r={SR}:cl=stereo"]
             maps = ["-map", "0:v", "-map", "1:a"]
         else:
-            inputs, maps = ["-i", p["clip"]], []
+            inputs, maps = ["-i", normalize_source(p["clip"], work)], []
         run(["ffmpeg", "-y", *inputs, *maps,
              "-vf", vf, "-af", af, "-frames:v", str(p["frames"]), "-ac", "2",
              "-c:v", "libx264", "-preset", "veryfast", "-crf", "14", "-pix_fmt", "yuv420p",
