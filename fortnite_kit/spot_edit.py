@@ -299,11 +299,12 @@ def render_overlays(spec, tl, base, out_video, work, end_dur=6.0):
                 paste_center(cv, ring, x, y + 40, 0.7 + 0.3 * ease_out_back((d + 0.25) / 0.3),
                              1 - ease_out((d - 0.75) / 0.25))
                 lab = C.get_or(("elab", kind), lambda: O.text_3d(
-                    {"chest": "+1 COFFRE", "loot": "+1 BUTIN", "bonus": "BONUS HORS CHRONO"}[kind],
-                    64 if kind != "bonus" else 54,
-                    {"chest": O.YELLOW, "loot": O.CYAN, "bonus": (255, 170, 255)}[kind],
-                    {"chest": O.GOLD, "loot": O.BLUE, "bonus": O.PURPLE}[kind],
-                    glow_color={"chest": O.GOLD, "loot": O.CYAN, "bonus": O.MAGENTA}[kind]))
+                    {"chest": "+1 COFFRE", "loot": "+1 BUTIN", "bonus": "BONUS HORS CHRONO",
+                     "car": "+1 CASSÉ EN VOITURE"}[kind],
+                    64 if kind in ("chest", "loot") else 54,
+                    {"chest": O.YELLOW, "loot": O.CYAN, "bonus": (255, 170, 255), "car": O.GREEN}[kind],
+                    {"chest": O.GOLD, "loot": O.BLUE, "bonus": O.PURPLE, "car": (20, 160, 70)}[kind],
+                    glow_color={"chest": O.GOLD, "loot": O.CYAN, "bonus": O.MAGENTA, "car": O.GREEN}[kind]))
                 if d > 0:
                     paste_center(cv, lab, x, y - 120 - 60 * d, ease_out_back(d / 0.25), 1 - ease_out((d - 0.7) / 0.3))
 
@@ -416,6 +417,57 @@ def _sfx_impact():
     return np.tanh(y * 2.2) * 0.55
 
 
+def _sfx_coins():
+    """Cascade of short metallic 'coin' pings."""
+    n = int(0.6 * SR)
+    y = np.zeros(n)
+    rng = np.random.default_rng(11)
+    for k in range(7):
+        at = int((0.02 + 0.06 * k + rng.uniform(0, 0.02)) * SR)
+        f = rng.uniform(2800, 4200)
+        L = int(0.18 * SR)
+        t = np.arange(L) / SR
+        s = (np.sin(2 * np.pi * f * t) + 0.5 * np.sin(2 * np.pi * f * 2.76 * t)) * np.exp(-t * 28)
+        e = min(n, at + L)
+        y[at:e] += s[:e - at] * (0.5 - 0.05 * k)
+    return y * 0.45
+
+
+def _sfx_crash():
+    """Wooden/metal crash for objects smashed by the car."""
+    n = int(0.55 * SR)
+    t = np.arange(n) / SR
+    rng = np.random.default_rng(13)
+    noise = rng.uniform(-1, 1, n)
+    body = np.convolve(noise, np.ones(12) / 12, mode="same") * np.exp(-t * 9) * 1.4
+    thud = np.sin(2 * np.pi * np.cumsum(70 + 160 * np.exp(-t * 30)) / SR) * np.exp(-t * 10)
+    clank = np.sin(2 * np.pi * 1650 * t) * np.exp(-t * 22) * 0.3
+    return np.tanh((body + thud + clank) * 1.6) * 0.7
+
+
+def _sfx_pop():
+    n = int(0.12 * SR)
+    t = np.arange(n) / SR
+    return np.sin(2 * np.pi * np.cumsum(500 + 900 * t / t[-1]) / SR) * np.exp(-t * 35) * 0.5
+
+
+def _sfx_riser(d=1.5):
+    n = int(d * SR)
+    t = np.arange(n) / SR
+    rng = np.random.default_rng(17)
+    x = rng.uniform(-1, 1, n)
+    hp = x - np.convolve(x, np.ones(6) / 6, mode="same")
+    tone = np.sin(2 * np.pi * np.cumsum(200 + 1200 * (t / d) ** 2) / SR) * 0.3
+    return (hp * 0.5 + tone) * (t / d) ** 2 * 0.6
+
+
+def _sfx_buzzer():
+    n = int(0.7 * SR)
+    t = np.arange(n) / SR
+    sq = np.sign(np.sin(2 * np.pi * 180 * t)) + np.sign(np.sin(2 * np.pi * 186 * t))
+    return sq * 0.18 * np.clip((0.7 - t) / 0.1, 0, 1)
+
+
 def drop_time(preset):
     p = MM.PRESETS[preset]
     bar = 4 * 60 / p["bpm"]
@@ -448,7 +500,7 @@ def mix_audio(spec, tl, info, game_wav, out_wav, work):
     fr = (idx - i0)[:, None]
     music = music[i0] * (1 - fr) + music[i0 + 1] * fr
 
-    env = np.full(N, 0.30, np.float32)  # quieter under normal-speed gameplay
+    env = np.full(N, 0.26, np.float32)  # quieter under normal-speed gameplay
     for p in tl.pieces:
         if p["speed"] > 1:
             a, b = int(p["edit0"] / FPS * SR), int((p["edit0"] + p["frames"]) / FPS * SR)
@@ -466,21 +518,31 @@ def mix_audio(spec, tl, info, game_wav, out_wav, work):
         j = min(N, i + len(sig))
         mix[i:j] += (sig[:j - i] * gain)[:, None]
 
-    ding, whoosh, impact = _sfx_ding(), _sfx_whoosh(), _sfx_impact()
-    for te in info["ev_edit"]:
-        add(ding, te, 0.9)
+    ding, whoosh, impact, coin, crash = _sfx_ding(), _sfx_whoosh(), _sfx_impact(), _sfx_coins(), _sfx_crash()
+    riser = _sfx_riser(1.6)
+    for (g, *_r, kind), te in zip(sorted(spec["events"]), info["ev_edit"]):
+        add(ding, te, 1.5)
+        add(coin, te + 0.05, 1.1)
+        add(impact, te, 0.55)
+        if kind == "car":
+            add(crash, te - 0.03, 1.4)
+    add(riser, info["t0_edit"] - 1.6, 0.9)
     prev = None
     for p in tl.pieces:  # whoosh on every speed change
         if prev is not None and p["speed"] != prev:
-            add(whoosh, p["edit0"] / FPS - 0.17, 0.7)
+            add(whoosh, p["edit0"] / FPS - 0.17, 1.2)
         prev = p["speed"]
     for te in info["texts"]:
-        add(whoosh, te - 0.05, 0.45)
-    add(impact, info["t0_edit"], 0.8)
+        add(whoosh, te - 0.05, 0.9)
+        add(_sfx_pop(), te + 0.12, 0.8)
+    add(impact, info["t0_edit"], 1.5)
     if info.get("limit_edit") is not None:
-        add(impact, info["limit_edit"], 1.0)
-    add(impact, info["base_end"], 0.9)
-    add(ding, info["base_end"] + 0.4, 0.8)
+        add(impact, info["limit_edit"], 1.6)
+        add(_sfx_buzzer(), info["limit_edit"], 1.0)
+    add(whoosh, info["base_end"] - 0.2, 1.2)
+    add(impact, info["base_end"], 1.6)
+    add(ding, info["base_end"] + 0.4, 1.3)
+    add(coin, info["base_end"] + 0.75, 1.2)
 
     fi = int(0.4 * SR)
     mix[-fi:] *= np.linspace(1, 0, fi)[:, None]

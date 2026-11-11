@@ -20,7 +20,11 @@ SPOT1 = dict(
     target=(960, 780),            # ring/arrow while in the air
     segments=[
         (0.0, 3.5, 1),            # skydive over the island, landing
-        (3.5, 36.7, 3),           # G-Wagon drive (C1 -> C2 6.5)
+        (3.5, 17.2, 3),           # G-Wagon drive
+        (17.2, 20.0, 1),          # 2 Slurp barrels smashed with the car
+        (20.0, 24.0, 3),
+        (24.0, 26.2, 1),          # 3rd barrel smashed with the car
+        (26.2, 36.7, 3),          # drive (C1 -> C2 6.5)
         (36.7, 42.2, 1),          # chests 1 + 2 on the deck
         (42.2, 73.3, 3),          # drive (C2 12 -> C3 13.5)
         (73.3, 81.3, 1),          # chest on the rock + ammo box loot
@@ -32,6 +36,9 @@ SPOT1 = dict(
         (118.33, 122.73, 1),      # loot pop + last chest
     ],
     events=[  # (global t, x, y, kind)
+        (18.6, 1020, 460, "car"),
+        (18.9, 720, 720, "car"),
+        (25.1, 940, 420, "car"),
         (38.13, 1300, 560, "chest"),
         (40.73, 1400, 700, "chest"),
         (75.30, 960, 440, "chest"),
@@ -42,13 +49,14 @@ SPOT1 = dict(
         (122.13, 1040, 560, "chest"),
     ],
     texts=[  # (global t, title, subtitle, rarity, edit duration)
-        (12.0, "EN VOITURE = PLUS RAPIDE", "LE G-WAGON EN OR", "legendary", 2.6),
+        (8.0, "EN VOITURE = PLUS RAPIDE", "LE G-WAGON EN OR", "legendary", 2.4),
+        (19.3, "ON CASSE TOUT EN VOITURE !", "ÇA COMPTE !", "legendary", 1.8),
         (41.2, "2 COFFRES EN 3 SECONDES !", None, "legendary", 2.0),
         (50.0, "DIRECTION LE PROCHAIN COFFRE", None, "rare", 2.2),
         (73.5, "COFFRE SUR LE ROCHER", "ON ESCALADE !", "epic", 1.7),
         (80.6, "CAISSE DE MUNITIONS", "ÇA COMPTE AUSSI !", "rare", 1.8),
-        (92.0, "5 COFFRES EN 1:27", None, "epic", 2.0),
-        (106.0, "6 COFFRES EN 1:36", "ON ACCÉLÈRE", "legendary", 2.2),
+        (92.0, "8 COFFRES EN 1:27", None, "epic", 2.0),
+        (106.0, "9 COFFRES EN 1:36", "ON ACCÉLÈRE", "legendary", 2.2),
     ],
 )
 

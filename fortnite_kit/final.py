@@ -29,8 +29,8 @@ CHANNEL = "WIZZCALL"
 # ranking by number of chests (ties: faster farm time first)
 RESULTS = [  # key, display name, chests, filmed farm seconds
     ("spot3_loguetown", "LOGUETOWN", 12, 210),
+    ("spot1_rubber_resort", "RUBBER RESORT", 11, 119),
     ("spot4_arlong_park", "BIVOUAC DES BOUCANIERS", 8, 115),
-    ("spot1_rubber_resort", "RUBBER RESORT", 8, 119),
     ("spot2_lantern_landing", "LANTERN LANDING", 7, 150),
     ("spot5_the_chest", "FORTERESSE DE LIL' UZI", 5, 57),
 ]
@@ -53,11 +53,18 @@ def norm(key, clip_name):
     return SE.normalize_source(path, os.path.join(R, "work", key))
 
 
+def edit_t(key, g):
+    return SE.Timeline(SPOTS[key]).edit_at(g)
+
+
 # ------------------------------------------------------------ cold open
 def cold_open():
     out = os.path.join(WORK, "cold_open.mp4")
     moments = [
-        dict(src=base("spot1_rubber_resort"), start=17.9, dur=1.1, kind="best", caption="DOUBLE COFFRE !"),
+        dict(src=base("spot1_rubber_resort"), start=edit_t("spot1_rubber_resort", 18.6) - 0.5, dur=1.2,
+             kind="best", caption="EN VOITURE !"),
+        dict(src=base("spot1_rubber_resort"), start=edit_t("spot1_rubber_resort", 40.73) - 0.9, dur=1.1,
+             kind="best", caption="DOUBLE COFFRE !"),
         dict(src=norm("spot2_lantern_landing", "part4.mp4"), start=4.4, dur=1.4, kind="rage", caption="NOOON !!"),
         dict(src=base("spot5_the_chest"), start=24.3, dur=1.2, kind="best", caption="3 COFFRES EN 7 S"),
         dict(src=base("spot2_lantern_landing"), start=15.6, dur=1.3, kind="best", caption="ÉLIMINATION !"),
@@ -141,59 +148,203 @@ def mux(video, audio, out):
 
 
 # ------------------------------------------------------------ intro
+from PIL import ImageDraw, ImageFilter
+
+
+def chest_moments(key, n=3):
+    """Edit times (in the spot's base.mkv) of its chest openings, spread out."""
+    spec = SPOTS[key]
+    tl = SE.Timeline(spec)
+    ts = [tl.edit_at(g) for g, *_ in sorted(spec["events"])]
+    if len(ts) <= n:
+        return ts
+    return [ts[round(i * (len(ts) - 1) / (n - 1))] for i in range(n)]
+
+
+def punch_montage(snips, out, dark=0.1):
+    """Sharp beat-cut montage: every snippet starts with a zoom punch."""
+    parts = []
+    for i, (src, st, d) in enumerate(snips):
+        p = os.path.join(WORK, f"{os.path.basename(out)}_{i}.mkv")
+        z = "(1.03+0.12*exp(-t*9))"
+        vf = (f"fps={FPS},scale={W}:{H},setsar=1,"
+              f"scale=w='trunc({W}*{z}/2)*2':h='trunc({H}*{z}/2)*2':eval=frame,"
+              f"crop={W}:{H},eq=brightness={-dark}:saturation=1.3:contrast=1.06,setpts=PTS-STARTPTS")
+        run(["ffmpeg", "-y", "-ss", f"{st:.3f}", "-t", f"{d:.3f}", "-i", src, "-an", "-vf", vf,
+             "-frames:v", str(round(d * FPS)), "-c:v", "libx264", "-preset", "veryfast", "-crf", "16",
+             "-pix_fmt", "yuv420p", p])
+        parts.append(p)
+    lst = out + ".txt"
+    with open(lst, "w") as f:
+        f.writelines(f"file '{os.path.abspath(p)}'\n" for p in parts)
+    run(["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", lst, "-c", "copy", out])
+    return out
+
+
+def rays_img(size=1500, n=16, col=(255, 220, 90)):
+    img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    c = size / 2
+    for k in range(n):
+        a0 = 2 * math.pi * k / n
+        a1 = a0 + math.pi / n * 0.8
+        d.polygon([(c, c), (c + c * 1.4 * math.cos(a0), c + c * 1.4 * math.sin(a0)),
+                   (c + c * 1.4 * math.cos(a1), c + c * 1.4 * math.sin(a1))], fill=col + (70,))
+    m = Image.new("L", (size, size), 0)
+    ImageDraw.Draw(m).ellipse([0, 0, size, size], fill=255)
+    m = m.filter(ImageFilter.GaussianBlur(size / 6))
+    img.putalpha(Image.composite(img.split()[3], Image.new("L", img.size, 0), m))
+    return img.filter(ImageFilter.GaussianBlur(3))
+
+
+def thumb_card(still, num, name, rarity):
+    c1, c2 = O.RARITY[rarity]
+    tw, th = 500, 281
+    th_img = still.resize((tw, th), Image.LANCZOS).convert("RGBA")
+    card = O.glass_card(tw + 24, th + 24, c1, c2, radius=26)
+    m = Image.new("L", (tw, th), 0)
+    ImageDraw.Draw(m).rounded_rectangle([0, 0, tw - 1, th - 1], 20, fill=255)
+    card.paste(th_img, (30 + 12, 30 + 12), m)
+    badge = O.text_3d(str(num), 110, O.YELLOW, O.GOLD, glow_color=O.GOLD)
+    card.alpha_composite(badge, (0, 0))
+    label = O.box_3d(name, None, rarity=rarity, size=40)
+    out = Image.new("RGBA", (max(card.width, label.width), card.height + label.height - 70), (0, 0, 0, 0))
+    out.alpha_composite(card, ((out.width - card.width) // 2, 0))
+    out.alpha_composite(label, ((out.width - label.width) // 2, card.height - 70))
+    return out
+
+
+def grab_still(key, t):
+    p = os.path.join(WORK, f"still_{key}.png")
+    run(["ffmpeg", "-y", "-ss", f"{t:.3f}", "-i", base(key), "-frames:v", "1", p])
+    return Image.open(p).convert("RGB")
+
+
 def intro():
     D = 24.0
-    bgv = bg_montage([(base("spot3_loguetown"), 30, 5), (base("spot1_rubber_resort"), 15, 5),
-                      (base("spot2_lantern_landing"), 40, 5), (base("spot4_arlong_park"), 18, 5),
-                      (base("spot5_the_chest"), 18, 5)], os.path.join(WORK, "intro_bg.mkv"))
+    BEAT = 60 / MM.PRESETS["intro"]["bpm"]
+    seg = 4 * BEAT  # cut every bar
+    pool = []
+    for k in ["spot3_loguetown", "spot1_rubber_resort", "spot5_the_chest", "spot2_lantern_landing",
+              "spot4_arlong_park"]:
+        pool += [(base(k), max(0.0, t - 0.5)) for t in chest_moments(k, 3)]
+    order = [pool[i % len(pool)] for i in (0, 3, 6, 9, 12, 1, 4, 7, 10, 13, 2, 5, 8, 11, 14)]
+    n = int(math.ceil(D / seg))
+    bgv = punch_montage([(src, st, seg) for src, st in order[:n]], os.path.join(WORK, "intro_bg.mkv"))
+    cut_times = [i * seg for i in range(n)]
+
     C = SE.Cache()
-    ch = O.text_3d(CHANNEL, 150, O.WHITE, (185, 215, 255), tilt=-3, glow_color=O.CYAN)
-    pres = O.text_3d("PRÉSENTE", 60, O.YELLOW, O.GOLD, alt=True)
-    t1 = O.text_3d("5 SPOTS", 230, O.YELLOW, O.GOLD, tilt=-3, glow_color=O.GOLD)
-    t2 = O.box_3d("POUR FARMER LE JETON PIRATE SHOP", None, rarity="epic", size=66)
-    c1 = O.box_3d("JE TESTE LES 5 MEILLEURS SPOTS", "AVEC UN CHRONO DE 3:30", rarity="legendary", size=64)
-    c2 = O.text_3d("LE PLUS DE COFFRES GAGNE !", 92, O.GREEN, (20, 160, 70), tilt=2, glow_color=O.GREEN)
-    cards = [O.box_3d(f"{i + 1}. {NAMES[k]}", None, rarity=["epic", "rare", "legendary", "epic", "rare"][i], size=50)
-             for i, k in enumerate(ORDER)]
-    q = O.text_3d("QUEL SPOT EST LE MEILLEUR ?", 100, O.WHITE, (190, 215, 255), glow_color=O.MAGENTA)
-    go = O.text_3d("C'EST PARTI !", 170, O.GREEN, (20, 160, 70), tilt=-4, glow_color=O.GREEN)
+    rays = rays_img()
+    rays_blue = rays_img(col=(120, 200, 255))
+    ch = O.text_3d(CHANNEL, 190, O.WHITE, (185, 215, 255), tilt=-3, glow_color=O.CYAN)
+    pres = O.text_3d("PRÉSENTE", 64, O.YELLOW, O.GOLD, alt=True, glow_color=O.GOLD)
+    t1 = O.text_3d("5 SPOTS", 260, O.YELLOW, O.GOLD, tilt=-3, glow_color=O.GOLD)
+    t2 = O.box_3d("POUR FARMER LE JETON PIRATE SHOP", None, rarity="epic", size=70)
+    c1 = O.box_3d("JE TESTE LES 5 MEILLEURS SPOTS", "AVEC UN CHRONO DE 3:30", rarity="legendary", size=66)
+    c2 = O.text_3d("LE PLUS DE COFFRES GAGNE !", 96, O.GREEN, (20, 160, 70), tilt=2, glow_color=O.GREEN)
+    chest_s = O.chest_icon(150, open_=True)
+    rar = ["epic", "rare", "legendary", "epic", "rare"]
+    cards = [thumb_card(grab_still(k, chest_moments(k, 2)[-1]), i + 1, NAMES[k], rar[i]) for i, k in enumerate(ORDER)]
+    pos = [(W * 0.2, 330), (W * 0.5, 330), (W * 0.8, 330), (W * 0.35, 760), (W * 0.65, 760)]
+    q = O.text_3d("QUEL SPOT EST LE MEILLEUR ?", 104, O.WHITE, (190, 215, 255), glow_color=O.MAGENTA)
+    go = O.text_3d("C'EST PARTI !", 200, O.GREEN, (20, 160, 70), tilt=-4, glow_color=O.GREEN)
+    impacts = [0.0, 3.4, 8.2, 13.2] + [13.6 + i * 0.7 for i in range(5)] + [22.4]
+    rng = np.random.default_rng(5)
+    sparks = [(rng.uniform(0, W), rng.uniform(0, H), rng.uniform(-60, 60), rng.uniform(-260, -90),
+               rng.uniform(3, 8), rng.uniform(0, 1.2)) for _ in range(70)]
+    rain = [(rng.uniform(100, W - 100), rng.uniform(0, 2.5), rng.uniform(-120, 120), rng.uniform(0.6, 1.1))
+            for _ in range(16)]
+
+    def shake(t):
+        s = sum(22 * math.exp(-(t - a) * 9) for a in impacts if 0 <= t - a < 0.6)
+        return s * math.sin(t * 90), s * math.cos(t * 77) * 0.6
 
     def fr(cv, t):
+        sx, sy = shake(t)
+        d = ImageDraw.Draw(cv)
+        if t < 3.4:  # dark opening
+            d.rectangle([0, 0, W, H], fill=(5, 3, 20, int(185 * (1 - ease((t - 3.1) / 0.3)))))
+        else:        # vignette panel for readability
+            d.rectangle([0, 0, W, H], fill=(10, 5, 35, 70))
+        for ct in cut_times:  # white flash on every cut
+            dt = t - ct
+            if 0 <= dt < 0.15 and t > 3.3:
+                d.rectangle([0, 0, W, H], fill=(255, 255, 255, int(150 * (1 - dt / 0.15))))
+        # rotating rays behind the big titles
+        if 3.4 <= t < 13.2 or t >= 22.4:
+            rr = C.get_or(("rays", int(t * 12) % 180, t >= 22.4),
+                          lambda: (rays_blue if t >= 22.4 else rays).rotate((t * 12) % 180 * 2, resample=Image.BILINEAR))
+            paste(cv, rr, W / 2 + sx, H * 0.42 + sy, 1.0 + 0.04 * math.sin(t * 2 * math.pi / BEAT))
+        # gold sparks rising
+        if t >= 3.4:
+            for x0, y0, vx, vy, r, ph in sparks:
+                tt = (t + ph * 3) % 3.0
+                x, y = x0 + vx * tt, (y0 + vy * tt) % H
+                a = int(220 * (1 - tt / 3.0))
+                d.ellipse([x - r, y - r, x + r, y + r], fill=(255, 220, 90, a))
+        # shockwave rings on impacts
+        for a0 in impacts[:4] + impacts[-1:]:
+            dt = t - a0
+            if 0 <= dt < 0.5:
+                R = 120 + 1400 * ease(dt / 0.5)
+                d.ellipse([W / 2 - R, H * 0.42 - R * 0.6, W / 2 + R, H * 0.42 + R * 0.6],
+                          outline=(255, 255, 255, int(220 * (1 - dt / 0.5))), width=14)
+
         if t < 3.4:
-            a = 1 - ease((t - 3.0) / 0.4)
-            paste(cv, ch, W / 2, H * 0.42, ease_back(t / 0.45), a)
-            paste(cv, pres, W / 2, H * 0.62, ease_back((t - 0.5) / 0.35), a)
-        if 3.2 <= t < 8.0:
-            d = t - 3.2
-            a = 1 - ease((d - 4.4) / 0.4)
-            paste(cv, t1, W / 2, H * 0.38, ease_back(d / 0.4) * (1 + 0.03 * math.sin(d * 4)), a)
-            paste(cv, t2, W / 2 + (1 - ease_back((d - 0.5) / 0.45)) * -1400, H * 0.68, 1, a)
-        if 8.0 <= t < 13.0:
-            d = t - 8.0
-            a = 1 - ease((d - 4.6) / 0.4)
-            paste(cv, c1, W / 2, H * 0.30, ease_back(d / 0.4), a)
-            rem = SE.CHRONO - max(0, d - 0.6) * 30
-            tm = C.get_or(("t", round(rem)), lambda: O.circular_timer(max(rem, 0), SE.CHRONO, size=260))
-            paste(cv, tm, W / 2 - 330, H * 0.68, ease_back((d - 0.4) / 0.4), a)
-            paste(cv, O.chest_icon(220, open_=d > 2), W / 2 + 330, H * 0.68, ease_back((d - 0.7) / 0.4), a)
-            paste(cv, c2, W / 2, H * 0.92, ease_back((d - 2.4) / 0.4), a)
-        if 13.0 <= t < 19.6:
-            d = t - 13.0
-            a = 1 - ease((d - 6.2) / 0.4)
-            for i, c in enumerate(cards):
-                k = ease_back((d - 0.25 - i * 0.7) / 0.4)
+            a = 1 - ease((t - 3.05) / 0.35)
+            paste(cv, ch, W / 2 + sx, H * 0.42 + sy, ease_back(t / 0.35) * (1 + 0.02 * math.sin(t * 9)), a)
+            paste(cv, pres, W / 2, H * 0.64, ease_back((t - 0.6) / 0.35), a)
+        if 3.4 <= t < 8.2:
+            dd = t - 3.4
+            a = 1 - ease((dd - 4.45) / 0.35)
+            k = 1.8 - 0.8 * ease_back(dd / 0.3)  # slam from big to normal
+            paste(cv, t1, W / 2 + sx, H * 0.38 + sy, k * (1 + 0.025 * math.sin(dd * 2 * math.pi / BEAT)), a)
+            paste(cv, t2, W / 2 + (1 - ease_back((dd - 0.45) / 0.4)) * -1500, H * 0.70, 1, a)
+            for i, xx in enumerate((W * 0.13, W * 0.87)):
+                paste(cv, chest_s, xx, H * 0.40 + 20 * math.sin(dd * 3 + i), ease_back((dd - 0.8 - i * 0.15) / 0.35), a)
+        if 8.2 <= t < 13.2:
+            dd = t - 8.2
+            a = 1 - ease((dd - 4.65) / 0.35)
+            for x, ph, vx, sc in rain:  # chests raining down
+                tt = dd - ph
+                if tt > 0:
+                    yy = -150 + 700 * tt * tt
+                    if yy < H + 150:
+                        im = C.get_or(("ch", round(sc * 10), int(tt * 8) % 12),
+                                      lambda: O.chest_icon(int(150 * sc), open_=False).rotate((int(tt * 8) % 12) * 30, expand=True))
+                        paste(cv, im, x + vx * tt, yy, 1, 0.9 * a)
+            paste(cv, c1, W / 2 + sx, H * 0.26 + sy, ease_back(dd / 0.35), a)
+            rem = SE.CHRONO - min(SE.CHRONO, max(0, dd - 0.5) * 60)
+            tm = C.get_or(("t", round(rem)), lambda: O.circular_timer(max(rem, 0), SE.CHRONO, size=300))
+            paste(cv, tm, W / 2, H * 0.62, ease_back((dd - 0.3) / 0.4), a)
+            paste(cv, c2, W / 2, H * 0.90, ease_back((dd - 2.0) / 0.35) * (1 + 0.03 * math.sin(dd * 7)), a)
+        if 13.2 <= t < 19.9:
+            dd = t - 13.2
+            a = 1 - ease((dd - 6.35) / 0.35)
+            for i, (cd, (x, y)) in enumerate(zip(cards, pos)):
+                k = ease_back((dd - 0.4 - i * 0.7) / 0.35)
                 if k > 0:
-                    paste(cv, c, W / 2 + (1 - k) * (1500 if i % 2 else -1500), 150 + i * 190, 1, a)
-        if 19.6 <= t < D:
-            d = t - 19.6
-            paste(cv, q, W / 2, H * 0.40, ease_back(d / 0.4), 1 - ease((d - 2.4) / 0.3))
-            paste(cv, go, W / 2, H * 0.55, ease_back((d - 2.7) / 0.35))
+                    paste(cv, cd, x + sx * 0.5, y + sy * 0.5 + 8 * math.sin(dd * 2 + i), 0.82 * k, a)
+        if 19.9 <= t < 22.4:
+            dd = t - 19.9
+            paste(cv, q, W / 2 + sx, H * 0.45 + sy, ease_back(dd / 0.35) * (1 + 0.02 * math.sin(dd * 8)),
+                  1 - ease((dd - 2.2) / 0.3))
+        if t >= 22.4:
+            dd = t - 22.4
+            paste(cv, go, W / 2 + sx, H * 0.48 + sy, 2.0 - ease_back(dd / 0.3))
+            if dd < 0.18:
+                d.rectangle([0, 0, W, H], fill=(255, 255, 255, int(200 * (1 - dd / 0.18))))
 
     v = render_section(bgv, D, fr, os.path.join(WORK, "intro_v.mp4"))
     imp, wh, ding = SE._sfx_impact(), SE._sfx_whoosh(), SE._sfx_ding()
-    sfx = [(imp, 0.0, 0.9), (wh, 3.0, 0.6), (imp, 3.3, 0.8), (wh, 7.8, 0.6), (ding, 10.5, 0.7)] + \
-          [(wh, 13.2 + i * 0.7, 0.5) for i in range(5)] + [(wh, 19.5, 0.6), (imp, 22.3, 1.0)]
-    a = music_bed("intro", D, os.path.join(WORK, "intro.wav"), sfx, drop_at=3.3)
+    coin, riser, pop = SE._sfx_coins(), SE._sfx_riser(2.0), SE._sfx_pop()
+    sfx = [(imp, 0.0, 1.6), (riser, 1.4, 1.0), (imp, 3.4, 1.8), (wh, 3.75, 1.0), (coin, 4.2, 1.2),
+           (wh, 8.1, 1.0), (imp, 8.2, 1.3), (ding, 9.0, 1.2), (coin, 10.2, 1.0), (ding, 10.4, 1.0),
+           (wh, 13.1, 1.0), (imp, 13.2, 1.2)]
+    sfx += [(wh, 13.5 + i * 0.7, 0.9) for i in range(5)] + [(pop, 13.65 + i * 0.7, 1.0) for i in range(5)]
+    sfx += [(wh, 19.8, 1.0), (pop, 20.0, 1.0), (riser, 20.4, 1.2), (imp, 22.4, 2.0), (coin, 22.5, 1.2)]
+    sfx += [(wh, ct - 0.12, 0.5) for ct in cut_times if ct > 3.5]
+    a = music_bed("intro", D, os.path.join(WORK, "intro.wav"), sfx, drop_at=3.4, gain=0.75)
     return mux(v, a, os.path.join(WORK, "intro.mp4"))
 
 
@@ -263,11 +414,11 @@ def ranking():
     sfx = [(imp, 0.0, 0.8)]
     for i, (k, name, chests, secs) in enumerate(order):
         s0 = float(starts[i])
-        sfx += [(wh, s0, 0.6), (imp, s0 + 0.15, 0.7)]
-        sfx += [(ding, s0 + 0.8 + c / 9, 0.35) for c in range(1, chests + 1)]
-    sfx += [(imp, float(starts[4]) + 2.6, 1.0)]
+        sfx += [(wh, s0, 1.1), (imp, s0 + 0.15, 1.3)]
+        sfx += [(ding, s0 + 0.8 + c / 9, 0.6) for c in range(1, chests + 1)]
+    sfx += [(imp, float(starts[4]) + 2.6, 1.8), (SE._sfx_coins(), float(starts[4]) + 2.7, 1.3)]
     sfx += [(wh, D_rank + 0.2 + j * 0.25, 0.45) for j in range(5)]
-    sfx += [(imp, D_rank + D_sum, 0.9), (ding, D_rank + D_sum + 0.4, 0.8)]
+    sfx += [(imp, D_rank + D_sum, 1.5), (ding, D_rank + D_sum + 0.4, 1.2)]
     a = music_bed("classement", D, os.path.join(WORK, "rank.wav"), sfx, drop_at=float(starts[4]))
     return mux(v, a, os.path.join(WORK, "ranking.mp4"))
 
