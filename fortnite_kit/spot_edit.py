@@ -219,7 +219,8 @@ def render_overlays(spec, tl, base, out_video, work, end_dur=6.0):
             k = ease_out_back(dt / 0.35) if dt < 0.4 else 1
             rem = CHRONO - (run_end if in_end else run_t)
             timer = C.get_or(("timer", round(rem * 10)), lambda: O.circular_timer(rem, CHRONO))
-            paste_center(cv, timer, W - 160 + (1 - k) * 400, 165)
+            if not in_end:
+                paste_center(cv, timer, W - 160 + (1 - k) * 400, 165)
             n = sum(1 for e in ev_edit if e <= t)
             last = max([e for e in ev_edit if e <= t], default=-9)
             q = round((t - last) / 0.6 * 20)
