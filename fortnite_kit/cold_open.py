@@ -37,6 +37,9 @@ def _caption_png(text, kind, path):
         img = O.text_3d(text, 150, (255, 90, 80), (190, 0, 30), tilt=-4, glow_color=O.RED)
     else:
         img = O.text_3d(text, 130, O.YELLOW, O.GOLD, tilt=3, glow_color=O.GOLD)
+    maxw = 1300  # leave room for the 1.6x pop-in
+    if img.width > maxw:
+        img = img.resize((maxw, int(img.height * maxw / img.width)), Image.LANCZOS)
     img.save(path)
     return img.size
 
