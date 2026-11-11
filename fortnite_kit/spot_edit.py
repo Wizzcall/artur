@@ -211,6 +211,7 @@ def render_overlays(spec, tl, base, out_video, work, end_dur=6.0):
     title = O.box_3d(f"SPOT {spec['number']} : {spec['name']}", "CHRONO 3:30", rarity="epic", size=62)
     go_txt = O.text_3d("C'EST PARTI !", 120, O.GREEN, (20, 160, 70), tilt=-3, glow_color=O.GREEN)
     arrow = O.arrow_3d(230, O.YELLOW, angle=-90)
+    arrow_up = O.arrow_3d(230, O.YELLOW, angle=90)
 
     cmd = ["ffmpeg", "-y", "-i", base,
            "-f", "rawvideo", "-pix_fmt", "rgba", "-s", f"{W}x{H}", "-r", str(FPS), "-i", "-",
@@ -242,7 +243,10 @@ def render_overlays(spec, tl, base, out_video, work, end_dur=6.0):
             ring = C.get_or(("ring", round(t * 10)), lambda: O.ring_3d(130, O.CYAN, t))
             paste_center(cv, ring, ax, ay)
             bob = 18 * math.sin(t * 2 * math.pi * 1.6)
-            paste_center(cv, arrow, ax, ay - 210 + bob)
+            if ay < 480:  # target near the top (title card there): arrow below, pointing up
+                paste_center(cv, arrow_up, ax, ay + 230 - bob)
+            else:
+                paste_center(cv, arrow, ax, ay - 210 + bob)
 
         # --- "C'EST PARTI" at landing
         dt = t - t0_edit
