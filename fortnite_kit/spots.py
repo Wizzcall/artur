@@ -108,13 +108,12 @@ _S3 = "spot3_loguetown"
 SPOT3 = dict(
     key=_S3, number=3, name="LOGUETOWN", music="loguetown", hdr=False,
     # One continuous match: clipA (0-3:00 after landing), then clipB (~27 s of
-    # game time later, read from the storm timer), then clip2_part2 (after B).
+    # game time later, read from the storm timer).
     clips=[(_p(_S3, "map.jpg"), -3.5, 3.5)]
     + [(_p(_S3, f"clipA_part{k + 1}_{30 * k}-{30 * k + 30}s.mp4"), 30.0 * k, 29.76 if k == 5 else 30.0)
        for k in range(6)]
     + [(_p(_S3, "clipB_part1_0-30s.mp4"), 206.8, 30.0),
-       (_p(_S3, "clipB_part2_30-60s.mp4"), 236.8, 29.6),
-       (_p(_S3, "clip2_part2_30-60s.mp4"), 300.0, 29.5)],
+       (_p(_S3, "clipB_part2_30-60s.mp4"), 236.8, 29.6)],
     t0=1.9,                       # first gameplay frame, just after touch-down
     target=(1061, 588),           # map marker on the screenshot
     segments=[
@@ -147,8 +146,6 @@ SPOT3 = dict(
         (234.8, 236.6, 1),
         (237.05, 244.6, 4),
         (244.6, 246.6, 1),
-        (301.9, 307.8, 3),
-        (307.8, 310.0, 1),
     ],
     events=[
         (3.0, 1190, 300, "chest"),
@@ -167,7 +164,6 @@ SPOT3 = dict(
         (226.4, 1000, 385, "chest"),
         (235.7, 960, 615, "chest"),
         (245.6, 1110, 650, "chest"),
-        (308.8, 690, 770, "chest"),
     ],
     texts=[
         (17.0, "4 COFFRES EN 25 S !", "DÉPART ULTRA RAPIDE", "legendary", 2.0),
@@ -182,7 +178,61 @@ SPOT3 = dict(
     ],
 )
 
-SPOTS = {s["key"]: s for s in (SPOT1, SPOT2, SPOT3)}
+_S4 = "spot4_arlong_park"
+SPOT4 = dict(
+    key=_S4, number=4, name="BIVOUAC DES BOUCANIERS", music="arlong_park", hdr=False,
+    # clipA = the first minute after landing; clip2 = later in the same game
+    # (small island, 32 -> 27 players). The unfilmed time between is a "gap":
+    # the chrono only counts filmed farm time.
+    clips=[(_p(_S4, "map.jpg"), -3.5, 3.5),
+           (_p(_S4, "clipA_part1_0-30s.mp4"), 0.0, 30.0),
+           (_p(_S4, "clipA_part2_30-60s.mp4"), 30.0, 29.66),
+           (_p(_S4, "clip2_part1_0-30s.mp4"), 70.0, 30.2),
+           (_p(_S4, "clip2_part2_30-60s.mp4"), 100.2, 29.5)],
+    gaps=[(59.66, 71.87)],
+    t0=1.9,
+    target=(1158, 359),           # map marker (Bivouac des Boucaniers)
+    segments=[
+        (-3.5, 0.0, 1),
+        (1.9, 5.4, 2),
+        (5.4, 7.4, 1),            # chest 1 (tent shelf)
+        (7.4, 22.8, 3),
+        (22.8, 25.0, 1),          # ammo box pops
+        (25.0, 34.5, 3),
+        (34.5, 36.8, 1),          # chest 3 (tent)
+        (36.8, 59.6, 4),
+        (71.87, 75.0, 1),         # later in the game: chest on the lookout
+        (75.0, 79.8, 3),
+        (79.8, 81.6, 1),          # chest (tent)
+        (81.6, 93.4, 3),
+        (93.4, 95.0, 1),          # chest (tent)
+        (95.0, 98.6, 2),
+        (98.6, 100.2, 1),         # chest (stall)
+        (102.1, 107.4, 3),
+        (107.4, 109.6, 1),        # chest in the storm
+        (109.6, 129.6, 6),
+    ],
+    events=[
+        (6.3, 960, 420, "chest"),
+        (24.4, 500, 470, "loot"),
+        (35.8, 900, 300, "chest"),
+        (74.0, 900, 780, "chest"),
+        (80.6, 1000, 615, "chest"),
+        (94.2, 1000, 540, "chest"),
+        (99.5, 920, 540, "chest"),
+        (108.8, 960, 600, "chest"),
+    ],
+    texts=[
+        (12.0, "CAMPEMENT PIRATE", "COFFRES SOUS LES TENTES", "epic", 2.2),
+        (24.6, "CAISSE DE MUNITIONS", "ÇA COMPTE AUSSI !", "rare", 1.8),
+        (45.0, "3 COFFRES EN 34 S", None, "epic", 2.0),
+        (72.2, "PLUS TARD DANS LA GAME...", "CHRONO EN PAUSE PENDANT LE TRAJET", "rare", 2.4),
+        (95.5, "3 COFFRES EN 19 S !", "SOUS LES TENTES", "legendary", 2.0),
+        (107.6, "DANS LA TEMPÊTE !", "ON OUVRE QUAND MÊME", "legendary", 2.0),
+    ],
+)
+
+SPOTS = {s["key"]: s for s in (SPOT1, SPOT2, SPOT3, SPOT4)}
 
 if __name__ == "__main__":
     import sys

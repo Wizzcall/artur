@@ -96,7 +96,10 @@ class Timeline:
 def render_base(spec, tl, work):
     pieces = []
     for i, p in enumerate(tl.pieces):
-        out = os.path.join(work, f"piece_{i:03d}.mkv")
+        import hashlib
+        key = hashlib.md5(repr((p["clip"], round(p["local0"], 4), p["frames"], p["speed"],
+                                spec.get("hdr"), HDR_VF, SDR_VF)).encode()).hexdigest()[:10]
+        out = os.path.join(work, f"piece_{i:03d}_{key}.mkv")
         pieces.append(out)
         if os.path.exists(out):
             continue
@@ -181,13 +184,26 @@ def render_overlays(spec, tl, base, out_video, work, end_dur=6.0):
     nframes = int(round(total * FPS))
     base_end = tl.duration
     last_g = tl.pieces[-1]["g1"]
-    limit_g = t0 + CHRONO
-    over = last_g > limit_g                      # footage continues after 3:30
-    limit_edit = tl.edit_at(limit_g) if over else None
-    run_end = min(last_g - t0, CHRONO)
+    gaps = spec.get("gaps", [])  # unfilmed stretches: the chrono is paused there
+
+    def rt(g):  # run time (filmed farm time since landing) at global time g
+        r = g - t0
+        for a, b in gaps:
+            r -= max(0.0, min(g, b) - max(a, t0))
+        return r
+
+    over = rt(last_g) > CHRONO                   # footage continues after 3:30
+    limit_edit = None
+    if over:
+        lo, hi = t0, last_g
+        for _ in range(60):
+            mid = (lo + hi) / 2
+            lo, hi = (mid, hi) if rt(mid) < CHRONO else (lo, mid)
+        limit_edit = tl.edit_at(hi)
+    run_end = min(rt(last_g), CHRONO)
     # openings after 3:30 are shown as "hors chrono" bonus, never counted
-    events = [(g, x, y, kind if g <= limit_g else "bonus") for g, x, y, kind in events]
-    counted = [te for (g, *_), te in zip(events, ev_edit) if g <= limit_g]
+    events = [(g, x, y, kind if rt(g) <= CHRONO else "bonus") for g, x, y, kind in events]
+    counted = [te for (g, *_), te in zip(events, ev_edit) if rt(g) <= CHRONO]
     final_count = len(counted)
     n_bonus = len(events) - final_count
 
@@ -212,7 +228,7 @@ def render_overlays(spec, tl, base, out_video, work, end_dur=6.0):
         cv = blank.copy()
         in_end = t >= base_end
         g, piece = tl.g_at(min(t, base_end - 1e-6))
-        run_t = g - t0
+        run_t = rt(g)
 
         # --- title card (slides in, holds, slides out)
         if t < 3.4:
