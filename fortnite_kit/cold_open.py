@@ -24,7 +24,7 @@ from PIL import Image
 
 import overlays as O
 
-W, H, FPS = 1920, 1080, 60
+W, H, FPS = 1920, 1080, 30
 SR = 48000
 
 

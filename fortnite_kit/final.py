@@ -1,0 +1,323 @@
+"""Assemble the full video:
+  cold open (rage + best moments, ~13 s) -> animated intro (~24 s)
+  -> 5 spot sections -> animated ranking (by chest count) + outro.
+
+Run after spots.py has rendered every section into renders/.
+Usage: python3 fortnite_kit/final.py
+"""
+import math
+import os
+import subprocess
+import sys
+import wave
+
+import numpy as np
+from PIL import Image
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import overlays as O
+import make_music as MM
+import spot_edit as SE
+from cold_open import build_cold_open
+from spots import SPOTS
+
+W, H, FPS, SR = 1920, 1080, 30, 48000
+R = "renders"
+WORK = os.path.join(R, "work", "final")
+CHANNEL = "WIZZCALL"
+
+# ranking by number of chests (ties: faster farm time first)
+RESULTS = [  # key, display name, chests, filmed farm seconds
+    ("spot3_loguetown", "LOGUETOWN", 12, 210),
+    ("spot4_arlong_park", "BIVOUAC DES BOUCANIERS", 8, 115),
+    ("spot1_rubber_resort", "RUBBER RESORT", 8, 119),
+    ("spot2_lantern_landing", "LANTERN LANDING", 7, 150),
+    ("spot5_the_chest", "FORTERESSE DE LIL' UZI", 5, 57),
+]
+ORDER = ["spot1_rubber_resort", "spot2_lantern_landing", "spot3_loguetown",
+         "spot4_arlong_park", "spot5_the_chest"]
+NAMES = {k: n for k, n, *_ in RESULTS}
+
+ease_back, ease = SE.ease_out_back, SE.ease_out
+paste = SE.paste_center
+run = SE.run
+
+
+def base(key):
+    return os.path.join(R, "work", key, "base.mkv")
+
+
+def norm(key, clip_name):
+    spec = SPOTS[key]
+    path = next(p for p, *_ in spec["clips"] if os.path.basename(p) == clip_name)
+    return SE.normalize_source(path, os.path.join(R, "work", key))
+
+
+# ------------------------------------------------------------ cold open
+def cold_open():
+    out = os.path.join(WORK, "cold_open.mp4")
+    moments = [
+        dict(src=base("spot1_rubber_resort"), start=17.9, dur=1.1, kind="best", caption="DOUBLE COFFRE !"),
+        dict(src=norm("spot2_lantern_landing", "part4.mp4"), start=4.4, dur=1.4, kind="rage", caption="NOOON !!"),
+        dict(src=base("spot5_the_chest"), start=24.3, dur=1.2, kind="best", caption="3 COFFRES EN 7 S"),
+        dict(src=base("spot2_lantern_landing"), start=15.6, dur=1.3, kind="best", caption="ÉLIMINATION !"),
+        dict(src=norm("spot2_lantern_landing", "part5.mp4"), start=14.8, dur=1.4, kind="rage", caption="SORS DE LÀ !!"),
+        dict(src=base("spot4_arlong_park"), start=43.9, dur=1.0, kind="best", caption="DANS LA TEMPÊTE"),
+        dict(src=norm("spot2_lantern_landing", "part6.mp4"), start=22.0, dur=1.3, kind="rage",
+             caption="C'EST PAS POSSIBLE"),
+        dict(src=base("spot3_loguetown"), start=17.4, dur=1.0, kind="best", caption="4 COFFRES EN 25 S"),
+        dict(src=norm("spot4_arlong_park", "clip2_part1_0-30s.mp4"), start=25.95, dur=1.5, kind="rage",
+             caption="MAIS NON !"),
+        dict(src=base("spot3_loguetown"), start=33.7, dur=2.0, kind="slowmo", caption="12 COFFRES ?!"),
+    ]
+    return build_cold_open(moments, music=None, out=out)
+
+
+# ------------------------------------------------------------ generic animated section
+def bg_montage(snips, out, blur=True):
+    """Background: given (src, start, dur) snippets, concat them, blurred + darkened."""
+    parts = []
+    for i, (src, st, d) in enumerate(snips):
+        p = os.path.join(WORK, f"{os.path.basename(out)}_{i}.mkv")
+        vf = f"fps={FPS},scale={W}:{H},setsar=1" + (",boxblur=12:2,eq=brightness=-0.18:saturation=1.2" if blur else "")
+        run(["ffmpeg", "-y", "-ss", str(st), "-t", str(d), "-i", src, "-an", "-vf", vf,
+             "-c:v", "libx264", "-preset", "veryfast", "-crf", "16", "-pix_fmt", "yuv420p", p])
+        parts.append(p)
+    lst = out + ".txt"
+    with open(lst, "w") as f:
+        f.writelines(f"file '{os.path.abspath(p)}'\n" for p in parts)
+    run(["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", lst, "-c", "copy", out])
+    return out
+
+
+def render_section(bgv, duration, frame_fn, out):
+    n = int(round(duration * FPS))
+    cmd = ["ffmpeg", "-y", "-i", bgv, "-f", "rawvideo", "-pix_fmt", "rgba", "-s", f"{W}x{H}", "-r", str(FPS), "-i", "-",
+           "-filter_complex", f"[0:v]tpad=stop_mode=clone:stop_duration=30[b];[b][1:v]overlay=format=auto,format=yuv420p[v]",
+           "-map", "[v]", "-frames:v", str(n), "-c:v", "libx264", "-preset", "medium", "-crf", "17", "-an", out]
+    proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
+    blank = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    for fi in range(n):
+        cv = blank.copy()
+        frame_fn(cv, fi / FPS)
+        proc.stdin.write(cv.tobytes())
+    proc.stdin.close()
+    err = proc.stderr.read().decode()
+    if proc.wait():
+        raise RuntimeError(err[-2000:])
+    return out
+
+
+def music_bed(preset, duration, out, sfx=(), drop_at=None, gain=0.9):
+    mw = os.path.join(WORK, f"music_{preset}.wav")
+    if not os.path.exists(mw):
+        MM.write(mw, MM.render(preset, duration=max(120, duration + 30),
+                               seed=list(MM.PRESETS).index(preset) * 11 + 3))
+    m = SE._read_wav(mw)
+    off = 0.0 if drop_at is None else max(0.0, SE.drop_time(preset) - drop_at)
+    N = int(duration * SR)
+    idx = np.clip((np.arange(N) / SR + off) * 44100, 0, len(m) - 2)
+    i0 = idx.astype(int)
+    fr = (idx - i0)[:, None]
+    mix = (m[i0] * (1 - fr) + m[i0 + 1] * fr) * gain
+    for sig, at, g in sfx:
+        i = int(at * SR)
+        j = min(N, i + len(sig))
+        if 0 <= i < N:
+            mix[i:j] += (sig[:j - i] * g)[:, None]
+    fo = int(1.0 * SR)
+    mix[-fo:] *= np.linspace(1, 0, fo)[:, None]
+    mix = np.tanh(mix * 1.1) / math.tanh(1.1) * 0.9
+    with wave.open(out, "wb") as w:
+        w.setnchannels(2); w.setsampwidth(2); w.setframerate(SR)
+        w.writeframes((np.clip(mix, -1, 1) * 32767).astype(np.int16).tobytes())
+    return out
+
+
+def mux(video, audio, out):
+    run(["ffmpeg", "-y", "-i", video, "-i", audio, "-map", "0:v", "-map", "1:a", "-c:v", "copy",
+         "-c:a", "aac", "-b:a", "192k", "-ar", str(SR), "-shortest", out])
+    return out
+
+
+# ------------------------------------------------------------ intro
+def intro():
+    D = 24.0
+    bgv = bg_montage([(base("spot3_loguetown"), 30, 5), (base("spot1_rubber_resort"), 15, 5),
+                      (base("spot2_lantern_landing"), 40, 5), (base("spot4_arlong_park"), 18, 5),
+                      (base("spot5_the_chest"), 18, 5)], os.path.join(WORK, "intro_bg.mkv"))
+    C = SE.Cache()
+    ch = O.text_3d(CHANNEL, 150, O.WHITE, (185, 215, 255), tilt=-3, glow_color=O.CYAN)
+    pres = O.text_3d("PRÉSENTE", 60, O.YELLOW, O.GOLD, alt=True)
+    t1 = O.text_3d("5 SPOTS", 230, O.YELLOW, O.GOLD, tilt=-3, glow_color=O.GOLD)
+    t2 = O.box_3d("POUR FARMER LE JETON PIRATE SHOP", None, rarity="epic", size=66)
+    c1 = O.box_3d("JE TESTE LES 5 MEILLEURS SPOTS", "AVEC UN CHRONO DE 3:30", rarity="legendary", size=64)
+    c2 = O.text_3d("LE PLUS DE COFFRES GAGNE !", 92, O.GREEN, (20, 160, 70), tilt=2, glow_color=O.GREEN)
+    cards = [O.box_3d(f"{i + 1}. {NAMES[k]}", None, rarity=["epic", "rare", "legendary", "epic", "rare"][i], size=50)
+             for i, k in enumerate(ORDER)]
+    q = O.text_3d("QUEL SPOT EST LE MEILLEUR ?", 100, O.WHITE, (190, 215, 255), glow_color=O.MAGENTA)
+    go = O.text_3d("C'EST PARTI !", 170, O.GREEN, (20, 160, 70), tilt=-4, glow_color=O.GREEN)
+
+    def fr(cv, t):
+        if t < 3.4:
+            a = 1 - ease((t - 3.0) / 0.4)
+            paste(cv, ch, W / 2, H * 0.42, ease_back(t / 0.45), a)
+            paste(cv, pres, W / 2, H * 0.62, ease_back((t - 0.5) / 0.35), a)
+        if 3.2 <= t < 8.0:
+            d = t - 3.2
+            a = 1 - ease((d - 4.4) / 0.4)
+            paste(cv, t1, W / 2, H * 0.38, ease_back(d / 0.4) * (1 + 0.03 * math.sin(d * 4)), a)
+            paste(cv, t2, W / 2 + (1 - ease_back((d - 0.5) / 0.45)) * -1400, H * 0.68, 1, a)
+        if 8.0 <= t < 13.0:
+            d = t - 8.0
+            a = 1 - ease((d - 4.6) / 0.4)
+            paste(cv, c1, W / 2, H * 0.30, ease_back(d / 0.4), a)
+            rem = SE.CHRONO - max(0, d - 0.6) * 30
+            tm = C.get_or(("t", round(rem)), lambda: O.circular_timer(max(rem, 0), SE.CHRONO, size=260))
+            paste(cv, tm, W / 2 - 330, H * 0.68, ease_back((d - 0.4) / 0.4), a)
+            paste(cv, O.chest_icon(220, open_=d > 2), W / 2 + 330, H * 0.68, ease_back((d - 0.7) / 0.4), a)
+            paste(cv, c2, W / 2, H * 0.92, ease_back((d - 2.4) / 0.4), a)
+        if 13.0 <= t < 19.6:
+            d = t - 13.0
+            a = 1 - ease((d - 6.2) / 0.4)
+            for i, c in enumerate(cards):
+                k = ease_back((d - 0.25 - i * 0.7) / 0.4)
+                if k > 0:
+                    paste(cv, c, W / 2 + (1 - k) * (1500 if i % 2 else -1500), 150 + i * 190, 1, a)
+        if 19.6 <= t < D:
+            d = t - 19.6
+            paste(cv, q, W / 2, H * 0.40, ease_back(d / 0.4), 1 - ease((d - 2.4) / 0.3))
+            paste(cv, go, W / 2, H * 0.55, ease_back((d - 2.7) / 0.35))
+
+    v = render_section(bgv, D, fr, os.path.join(WORK, "intro_v.mp4"))
+    imp, wh, ding = SE._sfx_impact(), SE._sfx_whoosh(), SE._sfx_ding()
+    sfx = [(imp, 0.0, 0.9), (wh, 3.0, 0.6), (imp, 3.3, 0.8), (wh, 7.8, 0.6), (ding, 10.5, 0.7)] + \
+          [(wh, 13.2 + i * 0.7, 0.5) for i in range(5)] + [(wh, 19.5, 0.6), (imp, 22.3, 1.0)]
+    a = music_bed("intro", D, os.path.join(WORK, "intro.wav"), sfx, drop_at=3.3)
+    return mux(v, a, os.path.join(WORK, "intro.mp4"))
+
+
+# ------------------------------------------------------------ ranking + outro
+def ranking():
+    per = [5.5, 5.5, 5.5, 5.5, 8.0]  # 5th .. 1st
+    D_rank = sum(per)
+    D_sum, D_out = 6.0, 8.0
+    D = D_rank + D_sum + D_out
+    snips = {"spot5_the_chest": (24.0, 6), "spot2_lantern_landing": (40.0, 6), "spot1_rubber_resort": (15.0, 6),
+             "spot4_arlong_park": (37.0, 6), "spot3_loguetown": (33.0, 8)}
+    order = list(reversed(RESULTS))  # 5th first
+    bgv = bg_montage([(base(k), snips[k][0], snips[k][1]) for k, *_ in order]
+                     + [(base("spot3_loguetown"), 45, 6), (base("spot5_the_chest"), 10, 8)],
+                     os.path.join(WORK, "rank_bg.mkv"))
+    C = SE.Cache()
+    head = O.box_3d("CLASSEMENT FINAL", "PAR NOMBRE DE COFFRES", rarity="legendary", size=60)
+    starts = np.cumsum([0] + per[:-1])
+    rar = {1: "legendary", 2: "epic", 3: "rare", 4: "rare", 5: "uncommon"}
+
+    def fr(cv, t):
+        if t < D_rank:
+            paste(cv, head, W / 2, 120, ease_back(t / 0.4))
+            i = int(np.searchsorted(starts, t, side="right") - 1)
+            d = t - starts[i]
+            k, name, chests, secs = order[i]
+            rank = 5 - i
+            a = 1 - ease((d - per[i] + 0.35) / 0.35)
+            col = (O.YELLOW, O.GOLD) if rank == 1 else (O.WHITE, (190, 215, 255))
+            big = C.get_or(("rk", rank), lambda: O.text_3d(f"#{rank}", 260 if rank == 1 else 200, *col,
+                                                           glow_color=O.GOLD if rank == 1 else O.CYAN))
+            paste(cv, big, W / 2 - 620, H * 0.52, ease_back(d / 0.35), a)
+            nm = C.get_or(("nm", rank), lambda: O.box_3d(name, None, rarity=rar[rank], size=62))
+            paste(cv, nm, W / 2 + 180, H * 0.40, ease_back((d - 0.2) / 0.4), a)
+            n = min(chests, int(max(0, d - 0.8) * 9))
+            pop = ((d - 0.8) * 9) % 1 if n < chests else 0
+            cnt = C.get_or(("cn", n, round(pop * 10)), lambda: O.chest_counter(n, pop=pop if n else 0))
+            paste(cv, cnt, W / 2 + 60, H * 0.66, ease_back((d - 0.5) / 0.4) * 1.25, a)
+            tm = C.get_or(("tm", rank), lambda: O.box_3d(f"EN {SE.fmt_mmss(secs)} DE FARM", None, rarity="rare", size=44))
+            paste(cv, tm, W / 2 + 520, H * 0.66, ease_back((d - 1.6) / 0.4), a)
+            if rank == 1 and d > 2.6:
+                win = C.get_or("win", lambda: O.text_3d("MEILLEUR SPOT !", 120, O.YELLOW, O.GOLD, tilt=-3,
+                                                        glow_color=O.GOLD))
+                paste(cv, win, W / 2, H * 0.86, ease_back((d - 2.6) / 0.35) * (1 + 0.04 * math.sin(d * 6)), a)
+        elif t < D_rank + D_sum:
+            d = t - D_rank
+            a = 1 - ease((d - D_sum + 0.35) / 0.35)
+            paste(cv, head, W / 2, 120, 1, a)
+            for j, (k, name, chests, secs) in enumerate(RESULTS):
+                row = C.get_or(("row", j), lambda: O.box_3d(f"#{j + 1}  {name}  -  {chests} COFFRES", None,
+                                                            rarity=rar[j + 1], size=52))
+                kk = ease_back((d - 0.2 - j * 0.25) / 0.35)
+                if kk > 0:
+                    paste(cv, row, W / 2 + (1 - kk) * 1600, 300 + j * 165, 1, a)
+        else:
+            d = t - D_rank - D_sum
+            sub = C.get_or("sub", lambda: O.text_3d("ABONNE-TOI !", 170, O.RED, (170, 0, 30), tilt=-3,
+                                                    glow_color=O.RED))
+            ch = C.get_or("ch", lambda: O.text_3d(CHANNEL, 130, O.WHITE, (185, 215, 255), glow_color=O.CYAN))
+            q = C.get_or("q", lambda: O.box_3d("ET TOI, TU FARMES OÙ ?", "DIS-LE EN COMMENTAIRE", rarity="epic", size=60))
+            paste(cv, ch, W / 2, H * 0.22, ease_back(d / 0.4))
+            paste(cv, sub, W / 2, H * 0.48, ease_back((d - 0.4) / 0.4) * (1 + 0.05 * math.sin(d * 5)))
+            paste(cv, q, W / 2, H * 0.78, ease_back((d - 1.0) / 0.4))
+
+    v = render_section(bgv, D, fr, os.path.join(WORK, "rank_v.mp4"))
+    imp, wh, ding = SE._sfx_impact(), SE._sfx_whoosh(), SE._sfx_ding()
+    sfx = [(imp, 0.0, 0.8)]
+    for i, (k, name, chests, secs) in enumerate(order):
+        s0 = float(starts[i])
+        sfx += [(wh, s0, 0.6), (imp, s0 + 0.15, 0.7)]
+        sfx += [(ding, s0 + 0.8 + c / 9, 0.35) for c in range(1, chests + 1)]
+    sfx += [(imp, float(starts[4]) + 2.6, 1.0)]
+    sfx += [(wh, D_rank + 0.2 + j * 0.25, 0.45) for j in range(5)]
+    sfx += [(imp, D_rank + D_sum, 0.9), (ding, D_rank + D_sum + 0.4, 0.8)]
+    a = music_bed("classement", D, os.path.join(WORK, "rank.wav"), sfx, drop_at=float(starts[4]))
+    return mux(v, a, os.path.join(WORK, "ranking.mp4"))
+
+
+# ------------------------------------------------------------ assembly
+def conform(src, out):
+    run(["ffmpeg", "-y", "-i", src, "-vf", f"scale={W}:{H},fps={FPS},setsar=1,format=yuv420p",
+         "-af", f"aresample={SR},aformat=channel_layouts=stereo", "-c:v", "libx264", "-preset", "veryfast",
+         "-crf", "15", "-c:a", "pcm_s16le", out])
+    return out
+
+
+def duration(p):
+    return float(subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", p],
+                                capture_output=True, text=True).stdout)
+
+
+def assemble(parts, out):
+    TD = 0.35
+    trans = ["zoomin"] + ["fadewhite"] * (len(parts) - 2)
+    ins, fv, fa = [], [], []
+    for p in parts:
+        ins += ["-i", p]
+    durs = [duration(p) for p in parts]
+    off = 0.0
+    vlab, alab = "[0:v]", "[0:a]"
+    for i in range(1, len(parts)):
+        off += durs[i - 1] - TD
+        fv.append(f"{vlab}[{i}:v]xfade=transition={trans[i - 1]}:duration={TD}:offset={off:.3f}[v{i}]")
+        fa.append(f"{alab}[{i}:a]acrossfade=d={TD}[a{i}]")
+        vlab, alab = f"[v{i}]", f"[a{i}]"
+    n = len(parts) - 1
+    run(["ffmpeg", "-y", *ins, "-filter_complex", ";".join(fv + fa), "-map", f"[v{n}]", "-map", f"[a{n}]",
+         "-c:v", "libx264", "-preset", "medium", "-crf", "18", "-pix_fmt", "yuv420p",
+         "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", out])
+    return out
+
+
+if __name__ == "__main__":
+    os.makedirs(WORK, exist_ok=True)
+    steps = sys.argv[1:] or ["cold", "intro", "rank", "final"]
+    if "cold" in steps:
+        cold_open()
+    if "intro" in steps:
+        intro()
+    if "rank" in steps:
+        ranking()
+    if "final" in steps:
+        parts = [os.path.join(WORK, "cold_open.mp4"), os.path.join(WORK, "intro.mp4")] + \
+                [os.path.join(R, f"{k}.mp4") for k in ORDER] + [os.path.join(WORK, "ranking.mp4")]
+        conf = [conform(p, os.path.join(WORK, f"c{i}.mkv")) for i, p in enumerate(parts)]
+        out = assemble(conf, os.path.join(R, "WIZZCALL_5_spots_jeton_pirate.mp4"))
+        print("FINAL", out, f"{duration(out):.1f}s")
