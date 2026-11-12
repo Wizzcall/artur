@@ -7,12 +7,30 @@ libass cannot draw colour emoji, so:
   * Apple emoji PNGs   -> overlaid left/right of each line, positioned from the real
                           libass bounding box of every event (measured by rendering it).
 
-Usage: python3 wizzcall_trailer.py SRC.mov OUT.mp4 FONTS_DIR EMOJI_DIR WORK_DIR
+Usage: python3 wizzcall_trailer.py SRC.mov OUT.mp4 FONTS_DIR EMOJI_DIR WORK_DIR [CLIP1 CLIP2]
+
+With CLIP1/CLIP2 the middle gameplay band is rebuilt from those clips, cut to the
+dialogue (EDIT below). The voices/audio always come from SRC, untouched.
 """
 import subprocess, sys, os
 from PIL import Image, ImageChops
 
 SRC, OUT, FONTS, EMOJI, WORK = sys.argv[1:6]
+CLIPS = sys.argv[6:8]
+
+# Gameplay edit for the middle band: (clip index, in, out) in clip timestamps,
+# laid end to end from t=0 (sum = 30.70 s). Aligned on the dialogue:
+EDIT = [
+    (0, 2.0, 7.2),    # 0.0-5.2   intro "ça va / t'as eu le jeton ?" -> chest on the boat + run
+    (1, 7.0, 13.6),   # 5.2-11.8  "j'arrive pas à voir les meilleurs spots" -> searching a dark hut
+    (1, 2.0, 4.4),    # 11.8-14.2 "ouvrir un maximum de coffres" -> chest opening
+    (0, 7.0, 10.8),   # 14.2-18.0 "vidéo de Wizzcall... incroyable" -> walks in, chest
+    (0, 17.0, 19.2),  # 18.0-24.1 "les cinq meilleurs endroits... coffres" -> chest montage
+    (0, 22.6, 24.6),
+    (0, 27.9, 29.8),
+    (1, 17.0, 20.4),  # 24.1-27.5 "Non / Jure ? / Je te jure / Allez viens"
+    (1, 22.0, 25.2),  # 27.5-30.7 "Vas-y, carré, on y va !" + CTA -> sprint
+]
 W, H = 720, 1280
 EMO_SIZE = 64
 EMO_GAP = 10
@@ -125,10 +143,25 @@ def main():
         inputs += ["-i", os.path.join(EMOJI, EMO_FILE[em])]
 
     # Grade: 3% punch-in zoom, light contrast/saturation, gentle sharpen, then subs.
-    fc = [f"[0:v]scale=742:1320:flags=lanczos,crop={W}:{H},"
-          "eq=contrast=1.07:saturation=1.15:brightness=0.01,"
-          "unsharp=5:5:0.45:5:5:0,"
-          f"ass={burn}:fontsdir={FONTS},format=yuv420p[v0]"]
+    grade = "eq=contrast=1.07:saturation=1.15:brightness=0.01,unsharp=5:5:0.45:5:5:0,"
+    if CLIPS:
+        clip_in = len(inputs) // 2
+        for c in CLIPS:
+            inputs += ["-i", c]
+        fc = []
+        for n, (ci, a, b) in enumerate(EDIT):
+            fc.append(f"[{clip_in + ci}:v]trim={a}:{b},setpts=PTS-STARTPTS,fps=30,"
+                      f"scale=1280:720:flags=lanczos,setsar=1[g{n}]")
+        fc.append("".join(f"[g{n}]" for n in range(len(EDIT))) +
+                  f"concat=n={len(EDIT)}:v=1:a=0,split[gb][gf]")
+        # Vertical layout: blurred/darkened gameplay as background, sharp 16:9 band centred
+        band_h = W * 9 // 16
+        fc.append(f"[gb]scale=-2:{H},crop={W}:{H},boxblur=24:2,eq=brightness=-0.12:saturation=1.2[bg]")
+        fc.append(f"[gf]scale={int(W * 1.03)}:-2:flags=lanczos,crop={W}:{band_h}[fg]")
+        fc.append(f"[bg][fg]overlay=0:(H-h)/2,{grade}ass={burn}:fontsdir={FONTS},format=yuv420p[v0]")
+    else:
+        fc = [f"[0:v]scale=742:1320:flags=lanczos,crop={W}:{H},{grade}"
+              f"ass={burn}:fontsdir={FONTS},format=yuv420p[v0]"]
     counts = {em: sum(1 for p in placements if p[0] == em) for em in used}
     for j, em in enumerate(used, start=1):
         outs = "".join(f"[e{j}_{k}]" for k in range(counts[em]))
