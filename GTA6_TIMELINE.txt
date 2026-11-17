@@ -1,0 +1,171 @@
+GTA 6 — TIMELINE DE MONTAGE
+==============================================================================
+Durée totale : 8:53.0  ·  1920×1080  ·  30 i/s  ·  H.264 + AAC
+119 plans · 27 sous-titres dynamiques · 111 effets sonores
+
+
+■ 0:00.0 → 0:34.9   INTRODUCTION SPECTACULAIRE   (cible du brief : 0:00–0:40)
+  Musique : cinématique et mystérieuse (drone, pulsations, arpège en écho) — 80 BPM
+
+    0:00.0 →   0:05.6  [cut        ] Clip officiel reveal logo/cover · 
+    0:05.6 →   0:08.0  [fade       ] Parallaxe 2.5D (sujet détouré) · vicecity
+    0:08.0 →   0:10.2  [xfade      ] Ken Burns · jl_s
+    0:10.2 →   0:12.3  [whip       ] Parallaxe 2.5D (sujet détouré) · keys
+    0:12.3 →   0:15.7  [cutmove    ] Ken Burns · vs1
+    0:15.7 →   0:20.3  [light      ] Titre 3D animé · GTA VI
+    0:20.3 →   0:24.3  [xfade      ] Teaser préchargement (illustration) · 
+    0:24.3 →   0:29.2  [fade_soft  ] Parallaxe 2.5D (sujet détouré) · jl8
+    0:29.2 →   0:34.9  [cutmove    ] Composition multi-cartes · jl_l,vl2,ue_squalo
+  Sous-titres : 0:03.1 « DANS 2 JOURS » | 0:05.9 « 13 ANS D'ATTENTE » | 0:12.5 « 19 NOVEMBRE 2026 » | 0:24.6 « PERSONNE N'Y A ENCORE JOUÉ »
+  SFX narration : 0:03.2 boom, 0:10.8 whoosh, 0:13.1 riser, 0:15.7 impact, 0:21.8 ui, 0:33.2 whoosh, 0:33.3 riser_s
+
+■ 0:34.9 → 1:34.1   LE TÉLÉCHARGEMENT SUR PS5   (cible du brief : 0:40–1:40)
+  Musique : montée de tension progressive (basse pulsée, filtre qui s'ouvre, résolution au 100 %) — 100 BPM
+
+    0:34.9 →   0:38.1  [flash      ] Carte chapitre synthwave · LE PRÉCHARGEMENT
+    0:38.1 →   0:43.2  [dezoom_soft] Habillage préchargement (illustration) · boot
+    0:43.2 →   0:49.4  [xfade      ] Habillage préchargement (illustration) · page
+    0:49.4 →   0:57.2  [dirblur    ] Habillage préchargement (illustration) · dl
+    0:57.2 →   1:01.6  [cutmove    ] Ken Burns · cover
+    1:01.6 →   1:07.6  [xfade      ] Habillage préchargement (illustration) · dl
+    1:07.6 →   1:12.9  [light      ] Ken Burns · vs2
+    1:12.9 →   1:18.3  [fade_soft  ] Habillage préchargement (illustration) · dl
+    1:18.3 →   1:21.8  [cutmove    ] Composition multi-cartes · jason,lucia,boobie_s
+    1:21.8 →   1:27.6  [dezoom     ] Ken Burns · ue_main
+    1:27.6 →   1:34.1  [dezoom_soft] Habillage préchargement (illustration) · done
+  Sous-titres : 0:47.8 « TÉLÉCHARGER » | 0:59.7 « DES FICHIERS QUI S'INSTALLENT » | 1:08.1 « PAS ENCORE JOUABLE » | 1:25.1 « IMAGES OFFICIELLES ROCKSTAR »
+  SFX narration : 0:34.9 impact, 0:43.2 ui, 0:47.9 click, 0:58.7 glitch, 1:08.2 ui, 1:29.3 ding, 1:32.5 riser_s
+
+■ 1:34.1 → 2:46.4   L'ATTENTE AUTOUR DU JEU   (cible du brief : 1:40–2:50)
+  Musique : documentaire tendu (ostinato, toms sur les dates clés) — 90 BPM
+
+    1:34.1 →   1:37.3  [flash      ] Carte chapitre synthwave · UNE ATTENTE HISTORIQUE
+    1:37.3 →   1:42.0  [xfade      ] Ken Burns · vl5
+    1:42.0 →   1:46.9  [cutmove    ] Date clé 3D · portg
+    1:46.9 →   1:51.8  [xfade      ] Compteur animé · ue_wyman
+    1:51.8 →   1:59.6  [glitch     ] Mur d'images glitch · ambrosia,kalaga,portg,ue_safehouse
+    1:59.6 →   2:06.0  [fade_soft  ] Date clé 3D · vicecity
+    2:06.0 →   2:10.1  [cutmove    ] Date clé 3D · lucia
+    2:10.1 →   2:15.6  [whip       ] Compteur animé · jl8
+    2:15.6 →   2:21.2  [dezoom_soft] Date clé 3D · jl_beach
+    2:21.2 →   2:28.1  [xfade      ] Compteur animé · jl_l
+    2:28.1 →   2:36.0  [zoom       ] Frise des reports · 
+    2:36.0 →   2:40.6  [cutmove    ] Ken Burns · vl3
+    2:40.6 →   2:46.4  [xfade      ] Parallaxe 2.5D (sujet détouré) · vp2
+  Sous-titres : 1:55.6 « RUMEURS · FAUSSES PISTES · MÈMES » | 2:04.2 « RETOUR À VICE CITY » | 2:14.5 « RECORD » | 2:33.0 « 19.11.2026 » | 2:40.5 « 13 ANS »
+  SFX narration : 1:34.1 impact, 1:41.2 rewind, 1:42.0 impact_s, 1:49.6 tick, 1:55.7 glitch, 1:59.5 glitch, 2:04.2 boom, 2:06.0 impact_s, 2:14.6 boom, 2:15.6 impact_s, 2:22.6 tick, 2:29.2 glitch, 2:33.0 impact_s, 2:40.6 boom, 2:44.8 riser_s
+
+■ 2:46.4 → 4:21.1   L'UNIVERS : JASON, LUCIA, VICE CITY   (cible du brief : 2:50–4:30)
+  Musique : synthwave estivale Vice City (batterie gated, basse octaviée, mélodie) — 104 BPM
+
+    2:46.4 →   2:49.6  [flash      ] Carte chapitre synthwave · BIENVENUE À LEONIDA
+    2:49.6 →   2:55.5  [fade_soft  ] Parallaxe 2.5D (sujet détouré) · keys
+    2:55.5 →   2:57.1  [cutmove    ] Parallaxe 2.5D (sujet détouré) · vicecity
+    2:57.1 →   2:59.8  [dirblur    ] Ken Burns · ue_squalo
+    2:59.8 →   3:01.5  [dezoom_soft] Ken Burns · ue_cheetah
+    3:01.5 →   3:05.0  [xfade      ] Ken Burns · vl1
+    3:05.0 →   3:08.5  [light      ] Ken Burns · vp1
+    3:08.5 →   3:10.3  [cutmove    ] Lieu + étiquette 3D · keys
+    3:10.3 →   3:14.3  [xfade      ] Lieu + étiquette 3D · portg
+    3:14.3 →   3:17.2  [dezoom     ] Lieu + étiquette 3D · ambrosia
+    3:17.2 →   3:20.1  [fade_soft  ] Lieu + étiquette 3D · kalaga
+    3:20.1 →   3:24.4  [cutmove    ] Ken Burns · jl_s
+    3:24.4 →   3:29.3  [flash      ] Héros détouré, nom 3D derrière le sujet · jason
+    3:29.3 →   3:31.9  [dezoom_soft] Clip officiel ralenti ×3 (interpolé) · c_jason
+    3:31.9 →   3:35.6  [xfade      ] Ken Burns · jl_rob
+    3:35.6 →   3:40.4  [zoom       ] Héros détouré, nom 3D derrière le sujet · lucia
+    3:40.4 →   3:42.2  [cutmove    ] Clip officiel ralenti ×3 (interpolé) · c_lucia
+    3:42.2 →   3:45.5  [xfade      ] Ken Burns · jl_beach
+    3:45.5 →   3:48.8  [zoom       ] Parallaxe 2.5D (sujet détouré) · jl_rob
+    3:48.8 →   3:53.5  [fade_soft  ] Parallaxe 2.5D (sujet détouré) · jl8
+    3:53.5 →   3:56.3  [cutmove    ] Ken Burns · weapon
+    3:56.3 →   3:59.4  [dirblur    ] Composition multi-cartes · cal_l,drequan_l,brian_l
+    3:59.4 →   4:02.4  [dezoom_soft] Personnage : artwork + clip + nom 3D · cal_l
+    4:02.4 →   4:05.1  [xfade      ] Personnage : artwork + clip + nom 3D · boobie_l
+    4:05.1 →   4:07.1  [light      ] Personnage : artwork + clip + nom 3D · drequan_l
+    4:07.1 →   4:09.1  [cutmove    ] Personnage : artwork + clip + nom 3D · dimez
+    4:09.1 →   4:11.4  [xfade      ] Personnage : artwork + clip + nom 3D · c_raul
+    4:11.4 →   4:15.2  [dezoom     ] Personnage : artwork + clip + nom 3D · brian_l
+    4:15.2 →   4:21.1  [fade_soft  ] Ken Burns · cover
+  Sous-titres : 2:52.6 « ÉTAT DE LEONIDA » | 2:57.2 « VICE CITY » | 3:47.6 « BONNIE & CLYDE »
+  SFX narration : 2:46.4 impact, 2:50.9 whoosh, 2:57.2 impact_s, 3:11.0 swish, 3:14.4 swish, 3:15.3 swish, 3:17.6 swish, 3:21.8 riser, 3:24.4 impact, 3:35.6 impact, 3:50.0 boom, 3:59.2 swish, 4:02.2 swish, 4:04.9 swish, 4:08.1 swish, 4:08.9 swish, 4:11.4 swish, 4:19.5 riser_s
+
+■ 4:21.1 → 6:08.5   MES ATTENTES PERSONNELLES   (cible du brief : 4:30–6:20)
+  Musique : discrète et intime (piano électrique, batterie feutrée, vinyle) — 78 BPM
+
+    4:21.1 →   4:24.3  [flash      ] Carte chapitre synthwave · CE QUE J'ATTENDS
+    4:24.3 →   4:31.1  [cutmove    ] Ken Burns · vl5
+    4:31.1 →   4:33.9  [light      ] Attente numérotée · vl1
+    4:33.9 →   4:37.8  [dezoom_soft] Ken Burns · vl4
+    4:37.8 →   4:41.6  [whip       ] Ken Burns · vp1
+    4:41.6 →   4:45.4  [xfade      ] Parallaxe 2.5D (sujet détouré) · ambrosia
+    4:45.4 →   4:47.9  [flash      ] Attente numérotée · jl_beach
+    4:47.9 →   4:54.2  [cutmove    ] Ken Burns · jl_s
+    4:54.2 →   4:59.4  [xfade      ] Écran partagé diagonal · 
+    4:59.4 →   5:01.8  [zoom       ] Attente numérotée · jl_rob
+    5:01.8 →   5:06.1  [fade_soft  ] Clip officiel ralenti ×3 (interpolé) · c_jason
+    5:06.1 →   5:10.5  [cutmove    ] Clip officiel ralenti ×3 (interpolé) · c_raul
+    5:10.5 →   5:16.0  [dezoom_soft] Ken Burns · weapon
+    5:16.0 →   5:18.6  [light      ] Attente numérotée · vl2
+    5:18.6 →   5:22.4  [xfade      ] Ken Burns · ue_style
+    5:22.4 →   5:25.9  [cutmove    ] Clip officiel ralenti ×3 (interpolé) · c_dimez
+    5:25.9 →   5:30.2  [dezoom     ] Ken Burns · dimez
+    5:30.2 →   5:32.6  [xfade      ] Attente numérotée · vs1
+    5:32.6 →   5:36.7  [fade_soft  ] Ken Burns · vs3
+    5:36.7 →   5:39.5  [glitch     ] Parallaxe 2.5D (sujet détouré) · vp2
+    5:39.5 →   5:43.0  [cutmove    ] Ken Burns · vs4
+    5:43.0 →   5:47.9  [dezoom_soft] Parallaxe 2.5D (sujet détouré) · cal_l
+    5:47.9 →   5:52.7  [whip       ] Parallaxe 2.5D (sujet détouré) · kalaga
+    5:52.7 →   5:57.6  [xfade      ] Ken Burns · keys
+    5:57.6 →   6:04.0  [cutmove    ] Ken Burns · jl_l
+    6:04.0 →   6:08.5  [light      ] Titre 3D animé · SURPRENDS-MOI
+  Sous-titres : 4:28.8 « DES ESPOIRS, PAS DES CERTITUDES » | 5:20.0 « UN MIROIR DÉFORMANT » | 5:43.5 « BONUS : LA NATURE »
+  SFX narration : 4:21.1 impact, 4:31.1 impact_s, 4:45.4 impact_s, 4:59.4 impact_s, 5:16.0 impact_s, 5:20.1 glitch, 5:30.2 impact_s, 5:43.5 impact_s, 6:06.9 riser_s, 6:07.0 boom
+
+■ 6:08.5 → 7:39.7   GTA 6 ET LES ATTENTES DE LA COMMUNAUTÉ   (cible du brief : 6:20–7:50)
+  Musique : énergie moyenne et chaleureuse, accélère vers le compte à rebours — 96 BPM
+
+    6:08.5 →   6:11.7  [flash      ] Carte chapitre synthwave · LA COMMUNAUTÉ
+    6:11.7 →   6:14.3  [xfade      ] Ken Burns · vl1
+    6:14.3 →   6:21.2  [dirblur    ] Mur d'images glitch · keys,vicecity,portg,ambrosia,kalaga,ue_safehouse
+    6:21.2 →   6:27.0  [fade_soft  ] Planche « carte » des lieux · keys,vicecity,portg,ambrosia,kalaga,ue_squalo
+    6:27.0 →   6:33.4  [cutmove    ] Mème animé · ue_style
+    6:33.4 →   6:38.6  [light      ] Ken Burns · vs3
+    6:38.6 →   6:42.9  [dezoom_soft] Ken Burns · boobie_s
+    6:42.9 →   6:45.9  [xfade      ] Clip officiel ralenti ×3 (interpolé) · c_drequan
+    6:45.9 →   6:50.3  [dezoom     ] Ken Burns · vl4
+    6:50.3 →   6:59.1  [cutmove    ] Liste animée · ue_cheetah
+    6:59.1 →   7:04.8  [xfade      ] Ken Burns · vl3
+    7:04.8 →   7:10.4  [glitch     ] Plateformes · 
+    7:10.4 →   7:16.7  [fade_soft  ] Ken Burns · ue_wyman
+    7:16.7 →   7:21.5  [cutmove    ] Ken Burns · vl5
+    7:21.5 →   7:26.2  [whip       ] Parallaxe 2.5D (sujet détouré) · kalaga
+    7:26.2 →   7:31.3  [dezoom_soft] Ken Burns · vp2
+    7:31.3 →   7:36.5  [xfade      ] Composition multi-cartes · vl4,jl_beach,vs2
+    7:36.5 →   7:39.7  [flash      ] Compte à rebours · 
+  Sous-titres : 6:21.6 « UNE CARTE RECONSTITUÉE PAR LES FANS » | 6:32.7 « « GTA 6 SORTIRA AVANT… » » | 6:48.4 « RÉPONSE DANS 2 JOURS » | 7:00.0 « LES INQUIÉTUDES » | 7:07.8 « PS5 · XBOX SERIES » | 7:32.5 « DES MILLIONS DE JOUEURS »
+  SFX narration : 6:08.5 impact, 6:17.8 glitch, 6:27.7 glitch, 6:48.4 impact_s, 7:00.1 low, 7:38.1 riser_s, 7:38.2 boom
+
+■ 7:39.7 → 8:53.0   CONCLUSION ET PROCHAINES VIDÉOS   (cible du brief : 7:50–9:00)
+  Musique : épique (toms, chœurs synthétiques, mélodie principale, final sur le logo) — 96 BPM
+
+    7:39.7 →   7:42.9  [flash      ] Carte chapitre synthwave · RENDEZ-VOUS LE 19
+    7:42.9 →   7:50.0  [cutmove    ] Habillage préchargement (illustration) · locked
+    7:50.0 →   7:54.7  [dirblur    ] Parallaxe 2.5D (sujet détouré) · jl_l
+    7:54.7 →   8:00.3  [xfade      ] Parallaxe 2.5D (sujet détouré) · vicecity
+    8:00.3 →   8:03.1  [fade_soft  ] Ken Burns · vs2
+    8:03.1 →   8:07.9  [light      ] Parallaxe 2.5D (sujet détouré) · jl_beach
+    8:07.9 →   8:13.0  [cutmove    ] Prochaine vidéo · vs2
+    8:13.0 →   8:18.0  [dezoom_soft] Prochaine vidéo · ue_squalo
+    8:18.0 →   8:23.0  [dezoom     ] Prochaine vidéo · ue_safehouse
+    8:23.0 →   8:32.1  [xfade      ] Abonnement + cloche · vp1
+    8:32.1 →   8:35.5  [cutmove    ] Ken Burns · vs4
+    8:35.5 →   8:45.0  [fade       ] Clip officiel reveal logo/cover · 
+    8:45.0 →   8:53.0  [fade       ] Écran de fin YouTube · 
+  Sous-titres : 7:50.2 « 19 NOVEMBRE » | 8:27.7 « ET VOUS, QU'ATTENDEZ-VOUS LE PLUS ? »
+  SFX narration : 7:39.7 impact, 7:50.2 impact, 8:09.3 whoosh, 8:24.7 click, 8:26.2 ding, 8:35.5 impact
+
+Mixage : voix -0 dB (référence) · musique -21 dB sous la voix / -7 dB dans les respirations (ducking auto)
+· SFX atténués de 4 dB sous la voix · ambiances urbaines/plage -12 dB sous la voix · master normalisé -14 LUFS, crête -1 dBTP.
+
+Transitions (sons de transition synchronisés) : cutmove, dezoom, dezoom_soft, dirblur, fade, fade_soft, flash, glitch, light, whip, xfade, zoom

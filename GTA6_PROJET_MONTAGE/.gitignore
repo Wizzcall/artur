@@ -1,0 +1,4 @@
+build/
+voice_user/
+media_path.json
+__pycache__/

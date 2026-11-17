@@ -1,0 +1,92 @@
+GTA 6 — SCRIPT DE VOIX OFF
+============================================================
+Une prise par ligne. Pour enregistrer votre voix : un fichier par numéro
+(voice_user/LINE_01.wav, LINE_02.wav, …), puis `python build.py --user-voice voice_user`.
+Le montage se recale automatiquement sur la durée de vos prises.
+
+
+[0:00.0] INTRODUCTION SPECTACULAIRE
+------------------------------------------------------------
+LINE_01  [0:03.2]  Dans deux jours, tout change.
+LINE_02  [0:05.6]  Après treize ans d'attente, deux bandes-annonces record et deux reports, Grand Theft Auto six arrive enfin.
+LINE_03  [0:12.3]  Le dix-neuf novembre, Vice City rallume ses néons.
+LINE_04  [0:20.3]  Le préchargement est lancé sur ma PS5. Je n'y ai pas encore joué, personne n'y a joué. Mais avant le grand jour, je voulais faire le point.
+LINE_05  [0:29.2]  Ce qu'on sait, ce que j'en attends, et ce que toute une communauté espère. Installez-vous.
+
+[0:34.9] LE TÉLÉCHARGEMENT SUR PS5 — chapitre 01 « LE PRÉCHARGEMENT »
+------------------------------------------------------------
+LINE_06  [0:38.1]  Il y a des moments qu'on attend depuis des années. Celui-là, j'ai voulu l'enregistrer.
+LINE_07  [0:43.2]  Allumer la console, ouvrir la page du jeu, et voir enfin ce bouton : télécharger.
+LINE_08  [0:49.4]  Ça paraît anodin. Mais pour beaucoup d'entre nous, c'est la première fois que GTA six existe vraiment sur notre machine. Plus une vidéo, plus une rumeur : des fichiers, qui s'installent.
+LINE_09  [1:01.6]  La barre de progression avance, et franchement, je l'ai regardée bien plus longtemps que nécessaire.
+LINE_10  [1:07.6]  Je le dis clairement : le jeu n'est pas encore jouable. Le préchargement sert à tout installer à l'avance, pour pouvoir lancer la partie dès que le jeu sera déverrouillé.
+LINE_11  [1:18.3]  Donc non, je n'ai rien vu du jeu que vous n'ayez pas déjà vu. Tout ce que je vous montre aujourd'hui, ce sont les images officielles diffusées par Rockstar.
+LINE_12  [1:27.6]  Mais voir ce téléchargement se terminer, après tout ce temps… ça fait quelque chose.
+
+[1:34.1] L'ATTENTE AUTOUR DU JEU — chapitre 02 « UNE ATTENTE HISTORIQUE »
+------------------------------------------------------------
+LINE_13  [1:37.3]  Pour comprendre pourquoi ce moment compte autant, il faut revenir en arrière.
+LINE_14  [1:42.0]  Septembre deux mille treize : GTA cinq sort. Il deviendra l'un des jeux les plus vendus de l'histoire, avec plus de deux cents millions d'exemplaires.
+LINE_15  [1:51.8]  Puis, pendant presque dix ans… plus rien d'officiel. Des rumeurs, des fausses pistes, des mèmes. Et en deux mille vingt-deux, une fuite massive d'images de développement confirme ce que tout le monde espérait : le retour à Vice City.
+LINE_16  [2:06.0]  Décembre deux mille vingt-trois : la première bande-annonce. Plus de quatre-vingt-dix millions de vues en vingt-quatre heures sur YouTube. Un record.
+LINE_17  [2:15.6]  Mai deux mille vingt-cinq : la deuxième bande-annonce, centrée sur Jason et Lucia. Rockstar annonce plus de quatre cent soixante-quinze millions de vues sur toutes les plateformes, en une seule journée.
+LINE_18  [2:28.1]  Entre-temps, il y a eu les reports : d'abord vers mai deux mille vingt-six, puis vers le dix-neuf novembre. Difficiles à encaisser… mais, selon le studio, nécessaires pour livrer le jeu au niveau attendu.
+LINE_19  [2:40.6]  Treize ans. Une génération entière de joueurs a grandi en attendant ce jeu.
+
+[2:46.4] L'UNIVERS : JASON, LUCIA, VICE CITY — chapitre 03 « BIENVENUE À LEONIDA »
+------------------------------------------------------------
+LINE_20  [2:49.6]  Alors, où est-ce qu'on va ? Bienvenue dans l'État de Leonida, la version Rockstar de la Floride.
+LINE_21  [2:55.5]  Au cœur de cet État : Vice City. Ses plages, ses néons, ses gratte-ciel et ses excès.
+LINE_22  [3:01.5]  La ville culte de deux mille deux revient, et, à en croire les bandes-annonces, bien plus vaste et plus vivante qu'à l'époque.
+LINE_23  [3:08.5]  Autour, Leonida s'étend : les Leonida Keys et leurs eaux turquoise, la ville industrielle de Port Gellhorn, Ambrosia et ses bikers, ou encore le parc national du Mont Kalaga.
+LINE_24  [3:20.1]  Et pour la première fois depuis longtemps, la série met en scène un duo.
+LINE_25  [3:24.4]  Jason Duval. Il a grandi entouré d'arnaqueurs et de petits escrocs. Après un passage par l'armée, il se retrouve dans les Keys, à travailler pour des trafiquants locaux.
+LINE_26  [3:35.6]  Lucia Caminos. Son père lui a appris à se battre dès qu'elle a su marcher. Et se battre pour sa famille l'a conduite tout droit au pénitencier de Leonida.
+LINE_27  [3:45.5]  Ensemble, ils forment un couple à la Bonnie et Clyde. Un coup facile qui tourne mal, et les voilà au cœur d'une conspiration criminelle qui s'étend à tout l'État de Leonida.
+LINE_28  [3:56.3]  Autour d'eux, une galerie de personnages déjà marquants.
+LINE_29  [3:59.4]  Cal Hampton, l'ami complotiste de Jason.
+LINE_30  [4:02.4]  Boobie Ike, figure légendaire de Vice City.
+LINE_31  [4:05.1]  Dre'Quan Priest et son label.
+LINE_32  [4:07.1]  Le duo de rappeuses Real Dimez.
+LINE_33  [4:09.1]  Raul Bautista, braqueur chevronné.
+LINE_34  [4:11.4]  Et Brian Heder, vieux briscard du trafic dans les Keys.
+LINE_35  [4:15.2]  À mes yeux, c'est le casting le plus riche que Rockstar ait présenté avant une sortie.
+
+[4:21.1] MES ATTENTES PERSONNELLES — chapitre 04 « CE QUE J'ATTENDS »
+------------------------------------------------------------
+LINE_36  [4:24.3]  Maintenant, place à mes attentes. Et je précise encore : ce sont des espoirs, pas des certitudes.
+LINE_37  [4:31.1]  Un : une ville vraiment vivante.
+LINE_38  [4:33.9]  Dans les bandes-annonces, les plages sont bondées, les boîtes de nuit débordent, les rues fourmillent de détails. J'espère retrouver cette densité manette en main, pas seulement dans des plans de cinéma.
+LINE_39  [4:45.4]  Deux : l'histoire du duo.
+LINE_40  [4:47.9]  Avec deux héros liés par une relation, Rockstar peut raconter quelque chose de plus intime que d'habitude. Je veux sentir la confiance, les doutes, les tensions entre Jason et Lucia.
+LINE_41  [4:59.4]  Trois : les braquages.
+LINE_42  [5:01.8]  On voit Jason et Lucia braquer une supérette, et Raul Bautista est présenté comme un braqueur de banques chevronné. J'espère des missions où la préparation compte vraiment, et où chaque choix change la façon dont tout se termine.
+LINE_43  [5:16.0]  Quatre : la satire.
+LINE_44  [5:18.6]  GTA a toujours été un miroir déformant de l'Amérique. Avec les réseaux sociaux, les vidéos virales et les influenceurs qu'on aperçoit dans les bandes-annonces, il y a de quoi faire.
+LINE_45  [5:30.2]  Cinq : l'ambiance.
+LINE_46  [5:32.6]  Les radios, les couchers de soleil, les virées en voiture au bord de l'eau. Ce sentiment de liberté qu'on ressentait déjà en deux mille deux, mais avec la technologie actuelle.
+LINE_47  [5:43.0]  Petit bonus : la nature. Les marais, les alligators, les flamants roses aperçus dans les bandes-annonces. Leonida, ce n'est pas qu'une ville, et j'ai hâte de m'éloigner des néons, juste pour voir ce que ce monde a à offrir.
+LINE_48  [5:57.6]  Et enfin, un vœu simple : que le jeu soit à la hauteur de ses propres ambitions. Après treize ans, je ne veux pas juste un bon GTA. Je veux être surpris.
+
+[6:08.5] GTA 6 ET LES ATTENTES DE LA COMMUNAUTÉ — chapitre 05 « LA COMMUNAUTÉ »
+------------------------------------------------------------
+LINE_49  [6:11.7]  Et je ne suis clairement pas le seul à rêver.
+LINE_50  [6:14.3]  Depuis la première bande-annonce, la communauté a tout disséqué, image par image. Des fans ont même reconstitué une carte complète de Leonida, en recoupant chaque plan, chaque bâtiment, chaque panneau.
+LINE_51  [6:27.0]  Il y a eu les mèmes, aussi. Pendant des années, « GTA six sortira avant… » est devenu une blague universelle, appliquée à tout et n'importe quoi. Cette blague-là vit ses derniers jours.
+LINE_52  [6:38.6]  Et les théories vont bon train : caméos d'anciens personnages, activités secrètes, détails cachés dans les bandes-annonces. Certaines se vérifieront, d'autres non. Réponse dans deux jours.
+LINE_53  [6:50.3]  Les attentes sont immenses : un monde plus réaliste, des passants plus crédibles, des intérieurs explorables, une physique plus poussée.
+LINE_54  [6:59.1]  Il y a aussi des inquiétudes. Le prix, d'abord, sujet de nombreux débats. L'absence de version PC au lancement, puisque le jeu sort uniquement sur PS5 et Xbox Series. Et bien sûr, la question de GTA Online, et de la place que prendra le multijoueur.
+LINE_55  [7:16.7]  Et puis il y a cette peur un peu irrationnelle : que l'attente ait été trop longue, que la hype soit trop haute pour qu'un jeu, quel qu'il soit, puisse la satisfaire.
+LINE_56  [7:26.2]  Mais au fond, c'est aussi ça, la magie de GTA six. Rarement un jeu aura autant rassemblé. Des millions de joueurs, sur toute la planète, qui comptent les mêmes jours.
+LINE_57  [7:36.5]  Et ce compte à rebours arrive à zéro.
+
+[7:39.7] CONCLUSION ET PROCHAINES VIDÉOS — chapitre 06 « RENDEZ-VOUS LE 19 »
+------------------------------------------------------------
+LINE_58  [7:42.9]  Alors voilà où on en est. Le jeu est sur ma console, prêt à être lancé. Il ne manque plus que le déverrouillage.
+LINE_59  [7:50.0]  Le dix-neuf novembre, Jason et Lucia nous ouvrent les portes de Leonida. Et après treize ans, on va enfin découvrir si Vice City valait toute cette attente.
+LINE_60  [8:00.3]  Personnellement, je vais savourer chaque minute. Pas de course, pas de spoilers : juste la découverte, comme à l'époque.
+LINE_61  [8:07.9]  Sur la chaîne, ce n'est que le début. Dès la sortie, je vous emmène dans mes premières heures de jeu, avec mes vraies premières impressions, sans filtre. Ensuite, on explorera Vice City en profondeur, et je vous partagerai mes conseils pour bien démarrer.
+LINE_62  [8:23.0]  Si vous ne voulez rien rater, abonnez-vous et activez la cloche. Et dites-moi en commentaire : qu'est-ce que vous attendez le plus de GTA six ?
+LINE_63  [8:32.1]  On se retrouve très vite… à Vice City.
+
+63 lignes · 1292 mots · 7.6 min de parole
