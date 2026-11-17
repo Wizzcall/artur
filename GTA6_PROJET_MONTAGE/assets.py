@@ -71,6 +71,11 @@ CLIPS = {
     "c_dimez":   "sel/Videos/Real_Dimez_Video_Clip.mp4",
     "c_raul":    "sel/Videos/Raul_Bautista_Video_Clip.mp4",
 }
+# captures PS5 réelles (téléphone, 640×360 / 24 i/s) : (fichier, facteur de vitesse)
+CAPTURES = {
+    "cap_intro": ("ps5/01_INTRO_Telechargement.mp4", 0.70),   # 204,0/209,8 Go — 4 min restantes
+    "cap_end":   ("ps5/02_FIN_Progression.mp4", 0.72),        # 208,1/209,8 Go — 55 s restantes
+}
 # images où un sujet net se détache (détourage utile)
 CUTOUT = ["jason", "lucia", "jl_l", "jl_s", "jl8", "jl_beach", "jl_rob", "cal_l", "boobie_l", "boobie_s",
           "drequan_l", "brian_l", "dimez", "vp1", "vp2", "vl1", "vl2", "vl3", "vl4", "vl5", "vs2",
@@ -153,6 +158,24 @@ def main():
                   "scale=-2:1080:flags=lanczos,unsharp=5:5:0.5")
         subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(src), "-vf", vf, "-an", "-c:v", "libx264",
                         "-crf", "12", "-preset", "medium", "-pix_fmt", "yuv420p", str(out)], check=True)
+        print("ok", k)
+    for k, (rel, spd) in CAPTURES.items():
+        src = media / rel
+        r = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(src)],
+                           capture_output=True, text=True)
+        ok = src.exists() and r.returncode == 0 and float(r.stdout.strip() or 0) > 0
+        report[k] = dict(file=rel, ok=bool(ok), duration=float(r.stdout.strip() or 0))
+        if not ok:
+            print("MANQUANT/CORROMPU", rel); continue
+        # recadrage 92 % centré (bords abîmés), débruitage léger, upscale Lanczos 16:9 sans déformation,
+        # ralenti par interpolation de mouvement ; audio étiré du même facteur (synchro conservée)
+        vf = (f"crop=iw*0.92:ih*0.92,hqdn3d=1.5:1.5:3:3,setpts=PTS/{spd},"
+              "minterpolate=fps=30:mi_mode=mci:mc_mode=aobmc:me_mode=bidir:vsbmc=1,"
+              "scale=1920:1080:flags=lanczos,unsharp=5:5:0.7,setsar=1")
+        subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(src), "-vf", vf, "-an", "-c:v", "libx264", "-crf", "12",
+                        "-preset", "medium", "-pix_fmt", "yuv420p", str(CACHE / f"{k}.mp4")], check=True)
+        subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(src), "-vn", "-af", f"atempo={spd},highpass=f=60",
+                        "-ar", "48000", "-ac", "2", str(CACHE / f"{k}.wav")], check=True)
         print("ok", k)
     (ROOT / "build" / "media_report.json").write_text(json.dumps(report, indent=1, ensure_ascii=False))
 

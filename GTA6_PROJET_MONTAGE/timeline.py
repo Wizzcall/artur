@@ -22,6 +22,8 @@ TR_SFX = dict(whip="whoosh", zoom="whoosh_zoom", dirblur="swish", light="shimmer
 
 def word_time(line_meta, start, word, text):
     """Temps approx. d'un mot : recherche dans la phrase, prorata des caractères."""
+    if isinstance(word, (int, float)):
+        return start + word
     if not word:
         return start
     for s in line_meta["sents"]:
@@ -71,21 +73,26 @@ def build():
             for (w, txt, style) in ln.get("caps", []):
                 if style == "none":
                     continue
-                ct = word_time(m, ls, w, ln["text"]) if m else ls
+                ct = word_time(m, ls, w, ln["text"]) if (m or isinstance(w, (int, float))) else ls
                 caps.append(dict(t0=ct - 0.05, t1=min(ct + (2.6 if style in ("big", "stat", "logo") else 3.0), le + 0.3), text=txt, style=style))
             for (w, name) in ln.get("sfx", []):
-                st = word_time(m, ls, w, ln["text"]) if m else ls
+                st = word_time(m, ls, w, ln["text"]) if (m or isinstance(w, (int, float))) else ls
                 if name == "riser":
                     sfx.append(dict(t=le - 2.6, name="riser"))
+                elif name == "riser_long":
+                    sfx.append(dict(t=le - 5.0, name="riser_long"))
                 else:
                     sfx.append(dict(t=st - (0.2 if name.startswith(("whoosh", "swish")) else 0.0), name=name))
             t = le
         sections.append(dict(key=sec["key"], t0=s0, t1=t, music=sec["music"], title=sec["title"], tempo=TEMPO[sec["music"]]))
 
     # transitions : choix déterministe, varié, synchronisé sur la grille rythmique
+    # Les plans « capture » (ajouts ultérieurs) sont exclus du calcul : les transitions du montage
+    # d'origine restent strictement identiques ; seules les jonctions avec une capture sont surchargées.
+    base = [s for s in shots if s["kind"] != "capture"]
     rot_s = 0; rot_h = 0; prev_strong = False
-    for i in range(1, len(shots)):
-        a, b = shots[i - 1], shots[i]
+    for i in range(1, len(base)):
+        a, b = base[i - 1], base[i]
         if "tr" in b:
             tr = b["tr"]
         elif b["kind"] == "reveal" or a["kind"] == "reveal":
@@ -98,8 +105,15 @@ def build():
             tr = SOFT[rot_s % len(SOFT)]; rot_s += 1
         b["tr"] = tr
         prev_strong = tr in STRONG or tr == "flash"
-        if tr in TR_SFX:
-            sfx.append(dict(t=b["t0"] - TR_LEN[tr] * 0.5, name=TR_SFX[tr], tr=True))
+    for i in range(1, len(shots)):
+        a, b = shots[i - 1], shots[i]
+        if b["kind"] == "capture":
+            b["tr"] = b["p"].get("tr_in", "xfade")
+        elif a["kind"] == "capture":
+            b["tr"] = a["p"].get("tr_out", "xfade")
+        if b["tr"] in TR_SFX:
+            sfx.append(dict(t=b["t0"] - TR_LEN[b["tr"]] * 0.5, name=TR_SFX[b["tr"]], tr=True))
+    shots[0].pop("tr", None)
     total = t
     edl = dict(fps=FPS, total=total, shots=shots, caps=caps, sfx=sorted(sfx, key=lambda x: x["t"]), voice=voice,
                sections=sections, chapters=chapters, tr_len=TR_LEN)

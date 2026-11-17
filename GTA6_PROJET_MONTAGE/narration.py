@@ -47,6 +47,11 @@ SAY = [
 SECTIONS = [
 # ─────────────────────────────────────────────────────────────── 0:00 INTRO
 dict(key="intro", title=None, music="intro", lines=[
+    # COLD OPEN — vraie capture PS5 (204,0/209,8 Go, 4 min restantes), zoom cinématique → logo VI
+    dict(text="", hold=4.65,
+         shots=[("capture", dict(clip="cap_intro", focus=(0.46, 0.34), zoom=0.16, lead=0.0,
+                                 tag="MA PS5  ·  PRÉCHARGEMENT EN COURS", tr_out="zoom"), 1)],
+         sfx=[(0.25, "ui"), ("", "riser")], post=0.0),
     dict(pre=3.2, text="Dans deux jours, tout change.",
          shots=[("reveal", dict(a=0.0, b=7.2, speed=1.0), 1)],
          caps=[("Dans", "DANS 2 JOURS", "big")], sfx=[("Dans", "boom")], post=0.8),
@@ -252,6 +257,11 @@ dict(key="outro", title=("06", "RENDEZ-VOUS LE 19"), music="outro", lines=[
          caps=[("commentaire", "ET VOUS, QU'ATTENDEZ-VOUS LE PLUS ?", "sub")], sfx=[("abonnez", "click"), ("cloche", "ding")], post=0.6),
     dict(text="On se retrouve très vite… à Vice City.",
          shots=[("kb", dict(img="vs4", move="in"), 1)], post=0.4),
+    # vraie capture PS5 (208,1/209,8 Go, 55 s restantes) + montée sonore → final logo
+    dict(text="", hold=5.6,
+         shots=[("capture", dict(clip="cap_end", focus=(0.74, 0.58), zoom=0.2, lead=0.3,
+                                 tag="MA PS5  ·  PLUS QUE QUELQUES SECONDES", tr_in="dezoom_soft", tr_out="light"), 1)],
+         caps=[(1.4, "PLUS QUE QUELQUES SECONDES…", "sub")], sfx=[("", "riser_long")], post=0.0),
     dict(text="", hold=9.5, shots=[("reveal", dict(a=7.6, b=16.0, speed=1.0, end=True), 1)],
          sfx=[("", "impact")], post=0.0),
     dict(text="", hold=8.0, shots=[("endcard", dict(), 1)], post=0.0),

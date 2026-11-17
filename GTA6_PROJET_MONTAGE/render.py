@@ -181,6 +181,26 @@ def shot_clip(p, lt, dur, fi):
     return out
 
 
+def shot_capture(p, lt, dur, fi):
+    """Vraie capture PS5 (téléphone) : lecture 1:1 synchronisée avec son audio, zoom cinématique
+    progressif vers la zone de progression, ratio 16:9 conservé (aucune déformation)."""
+    v = Video.get(p["clip"])
+    f = v.at(clamp(lt + p.get("lead", 0.0), 0, v.n / 30 - 1 / 30) * 30)
+    u = ease_io(clamp((lt + p.get("lead", 0.0)) / (dur + 2 * p.get("lead", 0.0) + 0.3)))
+    fx_, fy_ = p.get("focus", (0.5, 0.5)); z = 1.0 + p.get("zoom", 0.15) * u
+    # centre de zoom qui glisse doucement vers le point d'intérêt, sans jamais sortir de l'image
+    cx = lerp(0.5, fx_, u * 0.8); cy = lerp(0.5, fy_, u * 0.8)
+    half = 0.5 / z
+    cx = clamp(cx, half, 1 - half); cy = clamp(cy, half, 1 - half)
+    M = np.array([[z, 0, W / 2 - z * cx * W], [0, z, H / 2 - z * cy * H]], np.float32)
+    out = cv2.warpAffine(f, M, (W, H), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REFLECT)
+    tag = plain_text(p["tag"], "bebas", 40, WHITE_T, spacing=6, shadow=0)
+    a = clamp((lt + p.get("lead", 0.0) - 0.4) / 0.5) * clamp((dur - lt) / 0.4)
+    blink = 0.55 + 0.45 * (math.sin(lt * 5) > 0)
+    cv2.circle(out, (96, 178), 9, tuple(float(c) * blink * a + 0 for c in PINK), -1, cv2.LINE_AA)
+    return blit(out, tag, 120, 178, 1.0, a, anchor="l")
+
+
 def shot_char(p, lt, dur, fi):
     u = U(lt, dur); e = ease_out(lt / 0.45)
     if p.get("img"):
@@ -626,7 +646,7 @@ def shot_endcard(p, lt, dur, fi):
     return np.clip(out, 0, 1)
 
 
-SHOTS = dict(kb=shot_kb, para=shot_para, stack=shot_stack, loc=shot_loc, hero=shot_hero, split=shot_split,
+SHOTS = dict(capture=shot_capture, kb=shot_kb, para=shot_para, stack=shot_stack, loc=shot_loc, hero=shot_hero, split=shot_split,
              reveal=shot_reveal, clip=shot_clip, char=shot_char, title=shot_title, chapter=shot_chapter,
              year=shot_year, counter=shot_counter, glitchwall=shot_glitchwall, dates=shot_dates, num=shot_num,
              list=shot_list, platform=shot_platform, meme=shot_meme, mapgrid=shot_mapgrid,
@@ -749,7 +769,9 @@ def letterbox_amt(t):
     tz = next((s["t0"] for s in intro if s["kind"] == "dl_teaser"), 20)
     if t < tz: amt = min(ease_out(t / 1.2), clamp((tz - t) / 0.5))
     rv = [s for s in SHOT_LIST if s["kind"] == "reveal" and s["sec"] == "outro"]
-    if rv and rv[0]["t0"] - 0.5 < t < rv[0]["t1"]: amt = min(ease_out((t - rv[0]["t0"] + 0.5) / 1.0), clamp((rv[0]["t1"] - t) / 0.6))
+    ce = [s for s in SHOT_LIST if s["kind"] == "capture" and s["sec"] == "outro"]
+    st = ce[0]["t0"] - 0.3 if ce else (rv[0]["t0"] - 0.5 if rv else None)
+    if rv and st is not None and st < t < rv[0]["t1"]: amt = min(ease_out((t - st) / 1.0), clamp((rv[0]["t1"] - t) / 0.6))
     return amt
 
 

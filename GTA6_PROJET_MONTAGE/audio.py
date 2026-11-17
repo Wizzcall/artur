@@ -260,7 +260,7 @@ def build_sfx():
     lib = dict(
         whoosh=sfx_whoosh(), swish=sfx_whoosh(0.4, 900, 8000), whoosh_zoom=sfx_whoosh(0.6, 200, 3000),
         whoosh_rev=sfx_whoosh(0.7, 300, 6000, rev=True), boom=sfx_boom(), impact=sfx_impact(),
-        impact_s=sfx_impact_s(), riser=sfx_riser(), riser_s=sfx_riser(1.6, small=True), ui=sfx_ui(),
+        impact_s=sfx_impact_s(), riser=sfx_riser(), riser_s=sfx_riser(1.6, small=True), riser_long=sfx_riser(5.0), ui=sfx_ui(),
         click=sfx_click(), ding=sfx_ding(), glitch=sfx_glitch(), glitch_s=sfx_glitch(0.25),
         rewind=sfx_rewind(), tick=sfx_tick(), low=sfx_low(), shimmer=sfx_shimmer(),
     )
@@ -680,7 +680,7 @@ def main():
     lib = build_sfx()
     for k, v in lib.items(): sf.write(OUT / f"sfx_{k}.wav", v.astype(np.float32), SR)
     xbus = np.zeros((N, 2))
-    base = dict(boom=0.55, impact=0.6, impact_s=0.4, riser=0.35, riser_s=0.25, whoosh=0.35, swish=0.25, whoosh_zoom=0.32,
+    base = dict(boom=0.55, impact=0.6, impact_s=0.4, riser=0.35, riser_long=0.42, riser_s=0.25, whoosh=0.35, swish=0.25, whoosh_zoom=0.32,
                 whoosh_rev=0.3, ui=0.3, click=0.3, ding=0.35, glitch=0.22, glitch_s=0.18, rewind=0.3, tick=0.3, low=0.45, shimmer=0.25)
     for e in sfx_list:
         i = int(max(0, e["t"]) * SR)
@@ -696,6 +696,16 @@ def main():
             f = int(2 * SR); amb[:f] *= np.linspace(0, 1, f)[:, None]; amb[-f:] *= np.linspace(1, 0, f)[:, None]
             place(abus, amb, s["t0"], 0.5 if s["key"] != "intro" else 0.7)
     abus *= (db(-4) * (1 - duck) + db(-12) * duck)[:, None]
+    # son réel des captures PS5 (ambiance de pièce), calé image par image sur la vidéo
+    for sh in edl["shots"]:
+        if sh["kind"] == "capture":
+            y, sr = sf.read(ROOT / "build" / "cache" / f"{sh['p']['clip']}.wav", always_2d=True)
+            y = y[:, :2] if y.shape[1] > 1 else np.repeat(y, 2, 1)
+            vis = sh["t1"] - sh["t0"] + sh["p"].get("lead", 0.0) + 0.3
+            y = y[:int(vis * SR)]
+            f = int(0.15 * SR); y[:f] *= np.linspace(0, 1, f)[:, None]; y[-int(0.4 * SR):] *= np.linspace(1, 0, int(0.4 * SR))[:, None]
+            rms = np.sqrt((y ** 2).mean()) + 1e-9
+            place(abus, y * (db(-34) / rms), sh["t0"] - sh["p"].get("lead", 0.0))
     sf.write(OUT / "stem_voice.wav", vbus.astype(np.float32), SR)
     sf.write(OUT / "stem_music.wav", mbus.astype(np.float32), SR)
     sf.write(OUT / "stem_sfx.wav", xbus.astype(np.float32), SR)
