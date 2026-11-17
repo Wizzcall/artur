@@ -120,6 +120,26 @@ def timer_layer(L,secs_elapsed_float,appear_t,glow=1.0,alpha=1.0,scale=1.0):
     if alpha<1: lay.putalpha(lay.getchannel('A').point(lambda v:int(v*alpha)))
     return lay
 
+
+NUMC={}
+def num_sprite(L,n):
+    key=(L['align'],n)
+    if key not in NUMC:
+        s=L['num'][2]; f=font(FB,s); w=f.getbbox(str(n))[2]-f.getbbox(str(n))[0]
+        if w>1030: s=int(s*1030/w); f=font(FB,s)
+        NUMC[key]=text_sprite(str(n),f,max(4,int(round(s*0.024))))
+    return NUMC[key]
+DAYSC={}
+def days_sprite(L):
+    if L['align'] not in DAYSC:
+        s=L['days'][2]; DAYSC[L['align']]=text_sprite('DAYS LEFT',font(FB,s),max(4,int(round(s*0.024))))
+    return DAYSC[L['align']]
+PCTC={}
+def pct_sprite(L,v):
+    key=(L['align'],v)
+    if key not in PCTC: PCTC[key]=text_sprite('%d%%'%v,font(FB,L['info_s']),4)
+    return PCTC[key]
+
 # ---------- backgrounds ----------
 def readclip(name):
     p=subprocess.run(['ffmpeg','-v','error','-i',f'work/rt_{name}.mkv','-f','rawvideo','-pix_fmt','rgb24','-'],capture_output=True)
@@ -152,7 +172,7 @@ def frame(fi):
     img=bg.astype(np.float32)
     # shake on the "1" slam and the card/race hits
     sh=0
-    for c,amp in [(2.0,16),(7.5,12),(10.0,14)]:
+    for c,amp in [(5.0,18),(7.5,12),(10.0,14)]:
         if c<=t<c+0.3: sh=amp*(1-(t-c)/0.3)
     if sh>0:
         rng=np.random.default_rng(fi); dx,dy=rng.uniform(-sh,sh,2)
@@ -160,30 +180,53 @@ def frame(fi):
     canvas=Image.fromarray(np.clip(img,0,255).astype(np.uint8)).convert('RGBA')
     L,S=(CARD,SC) if name=='card' else (LEFT,SL)
     card=name=='card'
+    TA,TS,T1,T0=0.55,0.75,5.0,5.6   # text in, count start, slam to 1, timer in
     # GTA VI
-    if t>=1.0:
-        p=1.0 if card or t>=7.5 else eo((t-1.0)/0.35)
+    if t>=TA:
+        p=1.0 if t>=7.5 else eo((t-TA)/0.35)
         spr=S['gta']; x=xpos(L,'gta',spr)-int((1-p)*80); paste(canvas,spr,x,L['gta'][1],alpha=p)
-    # big 1
-    if t>=2.0:
-        if t<7.5: p=(t-2.0)/0.22
-        elif t<10: p=(t-7.5)/0.22
-        else: p=(t-10.0)/0.22
-        sc=1.0+0.7*(1-eo(p)) if p<1 else 1.0
-        spr=S['num']; paste(canvas,spr,xpos(L,'num',spr),L['num'][1],alpha=clamp(p*3),scale=sc)
-    # DAY LEFT + bar + info
-    if t>=3.0:
-        p=1.0 if t>=7.5 else eo((t-3.0)/0.35)
-        spr=S['days']; paste(canvas,spr,xpos(L,'days',spr),L['days'][1]+int((1-p)*60),alpha=p)
-        bf=0.99 if t>=7.5 else 0.99*eo((t-3.1)/0.7)
+    # day count: 369 -> 2 decelerating (slow-motion ending), then slam on 1
+    if t>=TS:
+        if t<T1:
+            u=clamp((t-TS)/(T1-TS))
+            n=int(round(2+367*(1-u)**2.6))
+            spr=num_sprite(L,n); p=eo((t-TS)/0.25)
+            # tiny pop each time the value changes in the slow part
+            sc=1.0
+            if n<=9:
+                tu=(t-TS)/(T1-TS); 
+                # time since this value appeared
+                lo=TS; 
+                k=0.0
+                for back in range(1,40):
+                    tt=t-back/FPS
+                    if tt<TS: break
+                    uu=clamp((tt-TS)/(T1-TS))
+                    if int(round(2+367*(1-uu)**2.6))!=n: break
+                    k+=1
+                sc=1.0+0.12*max(0,1-k/5)
+            paste(canvas,spr,xpos(L,'num',spr),L['num'][1],alpha=p,scale=sc)
+        else:
+            if t<7.5: p=(t-T1)/0.22
+            elif t<10: p=(t-7.5)/0.22
+            else: p=(t-10.0)/0.22
+            sc=1.0+0.7*(1-eo(p)) if p<1 else 1.0
+            spr=S['num']; paste(canvas,spr,xpos(L,'num',spr),L['num'][1],alpha=clamp(p*3),scale=sc)
+    # DAYS LEFT / DAY LEFT + bar + info
+    if t>=TS+0.1:
+        p=1.0 if t>=7.5 else eo((t-TS-0.1)/0.35)
+        if t<T1:
+            u=clamp((t-TS)/(T1-TS)); n=int(round(2+367*(1-u)**2.6))
+            spr=days_sprite(L); bf=min(0.99,1-n/380.0)
+        else:
+            spr=S['days']; bf=0.99
+        paste(canvas,spr,xpos(L,'days',spr),L['days'][1]+int((1-p)*60),alpha=p)
         canvas.alpha_composite(bar_layer(L,bf,alpha=p))
-        pct=S['pct'] if bf>=0.985 else text_sprite('%d%%'%int(round(bf*100)),font(FB,L['info_s']),4)
-        x0=L['bar'][0]+2
-        paste(canvas,pct,x0,L['info_y'],alpha=p)
+        pct=pct_sprite(L,int(round(bf*100)))
+        paste(canvas,pct,L['bar'][0]+2,L['info_y'],alpha=p)
         dspr=S['date']; dw=dspr[0].size[0]-2*dspr[1][0]-4
         paste(canvas,dspr,L['info_r']-dw,L['info_y']+3,alpha=p)
     # timer
-    T0=4.0
     if t>=T0:
         p=(t-T0)/0.4
         sc=1.0+0.25*(1-eo(p)) if p<1 else 1.0
@@ -205,7 +248,7 @@ VIG=(1-0.22*np.clip(rr-0.35,0,1)**1.5)[...,None]
 
 if __name__=='__main__':
     if len(sys.argv)>1 and sys.argv[1]=='preview':
-        for t in [0.5,1.2,2.1,2.5,3.5,4.2,4.6,6.0,8.0,9.3,11,15.5]:
+        for t in [0.4,0.9,1.5,2.5,3.5,4.2,4.6,4.9,5.1,6.0,8.0,12]:
             Image.fromarray(frame(int(t*FPS))).resize((360,640)).save(f'ref/pv_{t}.png')
         sys.exit()
     out=sys.argv[1]

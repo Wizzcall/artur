@@ -77,10 +77,6 @@ for rep in range(4):
         t=base+o
         if 7.5<=t<10.0 and rep!=2: pass
         add(bell(nt(s)),t,0.9 if t<2 else 1.0,pan=0.25)
-# intro hats 0-2
-for i in range(8): add(hat(),i*B/2+0.0,0.6)
-add(riser(1.0),1.0,0.35)
-add(impact(),2.0,1.0)
 bassnotes=[A, A*2**(-4/12), A*2**(-7/12)*2, A*2**(-5/12)]
 def drums(t0,t1,full=True):
     t=t0; bi=0
@@ -101,18 +97,43 @@ def bass(t0,t1):
         add(b808(f,0.9),t,0.9)
         add(b808(f,0.55,glide_to=f*1.5 if bar==3 else None),t+1.25,0.8)
         t+=2.0
-drums(2.0,7.5); bass(2.0,7.5)
+
+# intro 0-0.75 : pad + hats ; 0.75-5.0 : countdown groove (half-time) building up
+for i in range(10): add(hat(),i*B/2,0.5)
+add(impact(1.5),0.75,0.55)
+def light(t0,t1):
+    t=t0
+    while t<t1-1e-6:
+        beat=int(round(t/B)); pos=beat%4
+        if pos==0: add(kick(),t,0.85)
+        if pos==2: add(clap(),t,0.8)
+        add(hat(),t,0.8,pan=-0.2); add(hat(),t+B/2,0.6,pan=-0.2)
+        t+=B
+light(1.0,4.0)
+bass(1.0,4.0)
+# last second before the "1": tension, hat rolls + riser
+for r in range(16): add(hat(),4.0+r*B/8,0.5+0.03*r,pan=-0.2)
+add(riser(1.0),4.0,0.6)
+for r in range(8): add(clap()*0.5,4.5+r*B/8,0.3+0.08*r)
+# countdown blips on the slow last numbers (9..2)
+import math
+TS,T1=0.75,5.0
+prev=None
+for k in range(int(TS*1000),int(T1*1000)):
+    t=k/1000; u=(t-TS)/(T1-TS); n=int(round(2+367*(1-u)**2.6))
+    if prev is not None and n!=prev and n<=9: add(tick(True),t,0.8)
+    prev=n
+add(impact(2.4),5.0,1.15)
+drums(5.0,7.5); bass(5.0,7.5)
 add(riser(0.9),6.6,0.55)
 for r in range(8): add(clap()*0.5,7.0+r*B/8*1.0,0.3+0.08*r)
 add(impact(2.5),7.5,1.0)
-# break 7.5-10: half-time, ticks, sub
 add(b808(A,2.4),7.5,0.6)
 for r in range(16): add(clap()*0.5,9.5+r*B/16,0.2+0.05*r)
 add(riser(0.5),9.5,0.5)
 add(impact(),10.0,1.1)
 drums(10.0,16.0); bass(10.0,16.0)
-# clock ticks each second from timer appearance (4.0)
-for s in np.arange(4.0,16.0,1.0): add(tick(True),s,0.9,pan=0.1); add(tick(False),s+0.5,0.35,pan=-0.1)
+for s in np.arange(5.6,16.0,1.0): add(tick(True),s,0.9,pan=0.1); add(tick(False),s+0.5,0.35,pan=-0.1)
 mix=np.stack([L,R],1)
 # fade out last 0.6s, fade in 0.05
 fo=np.clip((DUR-np.arange(N)/SR)/0.6,0,1)[:,None]; mix*=fo
