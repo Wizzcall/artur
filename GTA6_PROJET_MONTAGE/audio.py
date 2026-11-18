@@ -2,7 +2,8 @@
 AUDIO : effets sonores + musiques originales (synthwave / Vice City) + mixage.
 Tout est synthétisé ici : aucune musique commerciale, aucun échantillon tiers.
 
-    python audio.py        → build/audio/*.wav  et  build/audio/MIX.wav
+    python audio.py              → build/audio/*.wav  et  build/audio/MIX.wav
+    python audio.py --no-voice   → build/audio/MIX_SANS_VOIX.wav (sans voix ni ducking)
 """
 import json
 from pathlib import Path
@@ -621,6 +622,9 @@ def voice_chain(y, sr):
     return y
 
 
+NO_VOICE = False
+
+
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
     edl = json.loads((ROOT / "build" / "edl.json").read_text())
@@ -634,6 +638,8 @@ def main():
         place(vbus, stereo(y), v["t"])
         i = int(v["t"] * SR); vact[i:i + len(y)] = 1
     vbus = norm(vbus, 0.7)
+    if NO_VOICE:  # version instrumentale : pas de voix, donc pas de ducking (musique/SFX/ambiances à niveau normal)
+        vbus[:] = 0; vact[:] = 0
     # ── enveloppe de ducking (attaque 120 ms, relâche 450 ms)
     duck = np.convolve(vact, np.ones(int(0.25 * SR)) / int(0.25 * SR), "same")
     duck = np.clip(duck * 2.5, 0, 1)
@@ -706,16 +712,18 @@ def main():
             f = int(0.15 * SR); y[:f] *= np.linspace(0, 1, f)[:, None]; y[-int(0.4 * SR):] *= np.linspace(1, 0, int(0.4 * SR))[:, None]
             rms = np.sqrt((y ** 2).mean()) + 1e-9
             place(abus, y * (db(-34) / rms), sh["t0"] - sh["p"].get("lead", 0.0))
-    sf.write(OUT / "stem_voice.wav", vbus.astype(np.float32), SR)
-    sf.write(OUT / "stem_music.wav", mbus.astype(np.float32), SR)
-    sf.write(OUT / "stem_sfx.wav", xbus.astype(np.float32), SR)
-    sf.write(OUT / "stem_ambience.wav", abus.astype(np.float32), SR)
+    sf.write(OUT / f"stem_voice{'_sans_voix' if NO_VOICE else ''}.wav", vbus.astype(np.float32), SR)
+    sf.write(OUT / f"stem_music{'_sans_voix' if NO_VOICE else ''}.wav", mbus.astype(np.float32), SR)
+    sf.write(OUT / f"stem_sfx{'_sans_voix' if NO_VOICE else ''}.wav", xbus.astype(np.float32), SR)
+    sf.write(OUT / f"stem_ambience{'_sans_voix' if NO_VOICE else ''}.wav", abus.astype(np.float32), SR)
     mix = vbus * 1.0 + mbus * 1.0 + xbus * 0.8 + abus * 1.0
     # limiteur doux
     mix = np.tanh(mix * 1.1) / np.tanh(1.1)
-    sf.write(OUT / "MIX.wav", mix.astype(np.float32), SR)
+    sf.write(OUT / ("MIX_SANS_VOIX.wav" if NO_VOICE else "MIX.wav"), mix.astype(np.float32), SR)
     print("mix ok", round(len(mix) / SR, 2), "s")
 
 
 if __name__ == "__main__":
+    import sys
+    NO_VOICE = "--no-voice" in sys.argv
     main()
