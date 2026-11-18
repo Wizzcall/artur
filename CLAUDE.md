@@ -39,3 +39,12 @@ Quand l'utilisateur demande un montage vidéo (YouTube gaming ou autre), **repar
 - Les vidéos finales (> 100 Mo) ne vont pas sur GitHub : elles sont dans `.gitignore`, `build.py` les régénère.
 - Limite d'envoi de fichier dans le chat : ~400 Mio.
 - Modèles et médias téléchargés hors dépôt (HuggingFace bloqué ; GitHub Releases accessible pour Kokoro et rembg).
+
+## Shorts (format vertical)
+- Modèle : `SHORT_GTA6/short.py` (réutilise `fx.py` en vertical via `fx.W, fx.H = 1080, 1920`).
+- Recette validée : remplir les bandes noires (fond flou de la même image), stabiliser (vidstab 2 passes),
+  étalonner, masquer l'ancien texte incrusté et le réécrire en 3D lisible (corriger les fautes),
+  zoom/flash/aberration synchronisés sur le drop et les temps forts détectés dans l'audio, son d'origine conservé,
+  pub de fin (miniature + avatar + « regarde-la ici ») pour la vidéo longue. Zones sûres Shorts : éviter le bas (UI)
+  et le bord droit (boutons).
+- Livraison sur iPhone : le bouton de téléchargement du chat ne marche pas → passer par le lien GitHub « raw ».
