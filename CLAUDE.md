@@ -48,3 +48,7 @@ Quand l'utilisateur demande un montage vidéo (YouTube gaming ou autre), **repar
   pub de fin (miniature + avatar + « regarde-la ici ») pour la vidéo longue. Zones sûres Shorts : éviter le bas (UI)
   et le bord droit (boutons).
 - Livraison sur iPhone : le bouton de téléchargement du chat ne marche pas → passer par le lien GitHub « raw ».
+- Short autonome « GTA 6 de minuit » : `MINUIT_SHORT/minuit.py` — source paysage mise en vertical (fond agrandi flouté,
+  échelle uniforme, jamais déformée), caméra par images-clés, bande-son originale calée image par image sur un
+  compte à rebours relevé à l'écran (tic-tac, accélération, « suck-out » 0,12 s puis impact au zéro). Si la source
+  finit par un fondu au noir, figer la dernière image nette pour le texte final.
