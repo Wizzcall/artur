@@ -170,29 +170,35 @@ def rounded_mask(size, r):
     return m
 
 
-def build_thumb_card(thumb):
-    cw, ch = 560, 760
+def build_thumb_card(thumb, regrade=True):
     t = thumb.convert("RGB")
+    landscape = t.width > t.height * 1.2
+    cw, ch = (960, 540) if landscape else (560, 760)
     s = max(cw / t.width, ch / t.height)
     t = t.resize((int(t.width * s) + 1, int(t.height * s) + 1), Image.Resampling.LANCZOS)
     t = t.crop(((t.width - cw) // 2, (t.height - ch) // 2,
                 (t.width - cw) // 2 + cw, (t.height - ch) // 2 + ch))
-    t = grade(t)
+    if regrade:
+        t = grade(t)
     b = 10
     card = Image.new("RGBA", (cw + 2 * b, ch + 2 * b), (0, 0, 0, 0))
     card.paste(Image.new("RGBA", card.size, (255, 255, 255, 255)), (0, 0),
                rounded_mask(card.size, 42))
     card.paste(t, (b, b), rounded_mask((cw, ch), 34))
     d = ImageDraw.Draw(card)
-    # play button
-    cx, cy, r = card.width // 2, card.height // 2, 70
+    # play button (centre en portrait, coin bas-gauche en paysage pour ne rien masquer)
+    if landscape:
+        cx, cy, r = 92, card.height - 92, 52
+    else:
+        cx, cy, r = card.width // 2, card.height // 2, 70
     d.ellipse((cx - r, cy - r, cx + r, cy + r), fill=(0, 0, 0, 150), outline=(255, 255, 255, 230), width=6)
-    d.polygon([(cx - 22, cy - 36), (cx - 22, cy + 36), (cx + 38, cy)], fill=(255, 255, 255, 255))
+    k = r / 70
+    d.polygon([(cx - 22 * k, cy - 36 * k), (cx - 22 * k, cy + 36 * k), (cx + 38 * k, cy)], fill=(255, 255, 255, 255))
     # "NOUVEAU" badge
     f = font(FONT_BLACK, 34)
     d.rounded_rectangle((28, 28, 232, 84), 14, fill=RED + (255,))
     d.text((130, 56), "NOUVEAU", font=f, fill="white", anchor="mm")
-    return card
+    return card, landscape
 
 
 def shadowed(layer, blur=22, off=(0, 14), alpha=150):
@@ -226,8 +232,9 @@ def draw_cursor(d, x, y, sc, pressed):
 
 
 class EndCard:
-    def __init__(self, thumb):
-        self.card, self.cpad = shadowed(build_thumb_card(thumb))
+    def __init__(self, thumb, custom=False):
+        card, self.landscape = build_thumb_card(thumb, regrade=not custom)
+        self.card, self.cpad = shadowed(card)
         self.f_title = font(FONT_BLACK, 74)
         self.f_btn = font(FONT_BLACK, 66)
 
@@ -274,7 +281,12 @@ class EndCard:
         d = ImageDraw.Draw(ov)
         # ── bouncing arrows pointing at the card
         a = clamp((t - 0.5) / 0.2)
-        if a > 0:
+        if a > 0 and self.landscape:
+            # flèche vers le bas entre le titre et la carte
+            by = 455 + 22 * abs(math.sin(t * 9))
+            d.polygon([(W // 2 - 60, by), (W // 2 + 60, by), (W // 2, by + 70)],
+                      fill=(255, 255, 255, int(255 * a)), outline=(0, 0, 0, int(200 * a)), width=4)
+        elif a > 0:
             for side in (-1, 1):
                 bx = W // 2 + side * (345 + 18 * abs(math.sin(t * 9)))
                 by = 860
@@ -410,7 +422,7 @@ def main():
         subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-ss", "24", "-i", args.input,
                         "-frames:v", "1", str(p)], check=True)
         thumb = Image.open(p)
-    endcard = EndCard(thumb)
+    endcard = EndCard(thumb, custom=bool(args.thumb))
 
     # audio: sped-up original + sfx
     wav = tmp / "a.wav"
