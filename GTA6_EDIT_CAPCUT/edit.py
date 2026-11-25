@@ -1,24 +1,26 @@
 """
-GTA 6 — EDIT « FLICKER » (réplique du modèle CapCut) · musique SUPER SLOWED
-9:16 · 1080×1920 · 30 i/s · uniquement des passages VIDÉO (aucune image fixe)
+GTA 6 — EDIT « FLICKER BOOMERANG » (réplique du modèle CapCut) · musique SLOWED
+9:16 · 1080×1920 · 30 i/s · ~20 s
 
 STRUCTURE
-  1. Intro SANS musique (2,7 s) : 2 clips vidéo en fondu enchaîné, son d'origine
-       logo VI (reveal)  ──fondu 0,6 s──▶  Lucia en voiture, la nuit
-  2. Edit sur la musique super slowed (19,4 s) : réplique du modèle CapCut
+  1. Intro SANS musique (3,0 s) : logo VI (boomerang) ──fondu──▶ Lucia en voiture (boomerang),
+     son d'origine des clips
+  2. Edit sur la musique slowed (17,1 s) : réplique exacte des transitions du modèle CapCut
 
-Le modèle CapCut (14,6 s, ~97 BPM) a été relevé image par image (luminance + saturation
-de ses 437 images) : chaque plan arrive sur le beat en pleine lumière puis baisse, en
-alternant couleur / noir & blanc, avec 4 effets signature :
+BOOMERANG (« reverse fondu en arrière ») : sur CHAQUE clip, l'image part en avant pendant la
+lumière, puis se rembobine en arrière (×1,5) pendant le fondu au noir. Le clip suivant sur
+le même plan reprend un peu plus loin, pour que l'action progresse.
+
+TRANSITIONS DU MODÈLE (relevées sur ses 437 images : luminance + saturation)
+  · flicker : chaque plan arrive sur le beat en pleine lumière puis tombe au noir,
+    alternance couleur / noir & blanc
   · balayage lumineux blanc + glitch en tranches     (modèle 4,87 → 5,30 s)
   · flicker négatif → explosion radiale arc-en-ciel  (modèle 7,27 → 7,63 s et 12,17 → 12,50 s)
   · strobe                                           (modèle 9,40 → 9,97 s et 13,53 → 14,10 s)
   · sortie en zoom flou                              (modèle 14,13 → fin)
-Différence voulue avec le modèle : les plans ne tombent plus au noir complet (plancher 35 %)
-pour qu'on voie clairement les clips.
 
-Super slowed = vitesse ET hauteur × SLOW (0,75) + reverb. La timeline du modèle est étirée
-du même facteur (chaque effet reste sur son temps) et les clips sont joués à 0,75× aussi.
+Slowed = vitesse ET hauteur × SLOW (0,85) + reverb ; la timeline du modèle est étirée du
+même facteur → chaque effet reste sur son temps.
 
 USAGE
     python edit.py --source GTA6_VIDEO_FINALE_SANS_VOIX.mp4 --music modele_capcut.mp4
@@ -30,84 +32,102 @@ import numpy as np
 from PIL import Image, ImageFilter
 
 W, H, FPS = 1080, 1920, 30
-SLOW = 0.75                     # super slowed : 0,75× vitesse + hauteur (musique ET clips)
+SLOW = 0.85                     # slowed : 0,85× vitesse + hauteur
 TPL_FRAMES = 437                # durée du modèle : 437 images à 30 i/s
 OUT = "WIZZCALL_GTA6_EDIT_SLOWED.mp4"
+FWD = 0.6                       # boomerang : 60 % du plan en avant, 40 % en arrière (×1,5)
 
-# Zone de la « carte » vidéo dans la vidéo longue (clips personnages) : x 512→1406, y 92→986
-CARD = (530, 110, 860, 860)     # x, y, largeur, hauteur (marge pour éviter le bord de la carte)
+# Zone de la « carte » vidéo des clips personnages dans la vidéo longue (x 512→1406, y 92→986)
+CARD = (530, 110, 860, 860)
 
-# ── Clips VIDÉO de la vidéo longue : début (s), cadrage, centre horizontal, vitesse ──
+# ── Plans de la vidéo longue : début (s), cadrage, centre horizontal ──
 #    "full" = recadrage 9:16 de l'image 16:9 · "card" = zoom dans la carte vidéo centrale
 CLIPS = {
-    "vi":      (4.60,   "full", 0.50, 1.0),   # intro : reveal du logo VI
-    "lucia":   (225.00, "full", 0.62, 1.0),   # intro : Lucia en voiture, la nuit, arme
-    "jason":   (306.40, "full", 0.56, SLOW),  # Jason au bandana, braquage de la supérette
-    "raul":    (311.35, "card", 0.50, SLOW),  # Raul Bautista, fusil d'assaut dans la rue
-    "cover":   (525.90, "full", 0.50, SLOW),  # reveal de la jaquette GTA VI
-    "dimez":   (327.95, "card", 0.55, SLOW),  # Real Dimez, boîte de nuit
-    "drequan": (407.80, "card", 0.50, SLOW),  # Dre'Quan Priest
-    "vi_end":  (6.15,   "full", 0.50, SLOW),  # logo VI néon (sortie)
+    # vrais clips vidéo
+    "vi":      (4.60,   "full", 0.50),   # reveal du logo VI
+    "lucia_v": (225.00, "full", 0.62),   # Lucia en voiture, la nuit, arme
+    "jason_v": (306.40, "full", 0.56),   # Jason au bandana, braquage
+    "raul":    (311.35, "card", 0.50),   # Raul Bautista, fusil d'assaut
+    "cover":   (525.90, "full", 0.50),   # reveal de la jaquette
+    "dimez":   (327.95, "card", 0.55),   # Real Dimez, boîte de nuit
+    "drequan": (407.80, "card", 0.50),   # Dre'Quan Priest
+    "vi_end":  (6.15,   "full", 0.50),   # logo VI néon
+    # plus beaux plans animés
+    "glasses": (102.2,  "full", 0.50),   # Jason, lunettes rouges
+    "palms":   (87.0,   "full", 0.45),   # Jason & Lucia, palmiers au couchant
+    "club":    (186.2,  "full", 0.50),   # boîte de nuit néon
+    "duo":     (205.8,  "full", 0.50),   # Lucia & Jason, gros plan
+    "cocktail":(279.4,  "full", 0.50),   # Lucia, cocktail
+    "vcboat":  (182.2,  "full", 0.50),   # Vice City vue de la mer
+    "car":     (363.0,  "full", 0.62),   # duo, voiture, palmiers
+    "gun":     (161.6,  "full", 0.66),   # Jason arme au poing
+    "port":    (451.6,  "full", 0.50),   # duo au port
+    "dress":   (283.0,  "full", 0.45),   # Lucia robe rouge
+    "beach":   (488.2,  "full", 0.50),   # duo, plage
+    "bonnie":  (231.0,  "full", 0.55),   # Bonnie & Clyde, station-service
+    "night":   (485.2,  "full", 0.50),   # Lucia en voiture, néons (strobe + sortie)
 }
-INTRO = [("vi", 48), ("lucia", 51)]  # (clip, images) — fondu de FADE images entre les deux
-FADE = 18
+
+# Intro : (clip, images en avant, images en arrière) ; fondu enchaîné de FADE images
+INTRO = [("vi", 36, 14), ("lucia_v", 38, 16)]
+FADE = 14
 
 # ── Timeline du modèle, en images du modèle (30 i/s) : (début, fin, type, clip, param) ──
-D = 0.35  # plancher de lumière (le modèle descend à ~0,05 ; relevé pour voir les clips)
+D = 0.05  # niveau « éteint » relevé sur le modèle
 TIMELINE = [
-    (0,   3,   "bw",     "jason", None),
-    (3,   20,  "hit",    "jason", 8),
-    (20,  33,  "hit",    "jason", 4),
-    (33,  43,  "hit",    "jason", 0),
-    (43,  51,  "hit",    "jason", 0),
-    (51,  61,  "hit",    "jason", 1),
-    (61,  79,  "hit",    "jason", 9),
+    (0,   3,   "bw",     "jason_v", None),
+    (3,   20,  "hit",    "jason_v", 8),
+    (20,  33,  "hit",    "jason_v", 4),
+    (33,  43,  "hit",    "glasses", 0),
+    (43,  51,  "hit",    "glasses", 0),
+    (51,  61,  "hit",    "palms", 1),
+    (61,  79,  "hit",    "palms", 9),
     (79,  88,  "bw",     "raul", None),
     (88,  98,  "hit",    "raul", 0),
     (98,  107, "bw",     "raul", None),
     (107, 115, "hit",    "raul", 0),
-    (115, 124, "bw",     "raul", None),
-    (124, 133, "hit",    "raul", 0),
-    (133, 146, "hit",    "raul", 0),
-    (146, 153, "swipe",  "raul", None),
+    (115, 124, "bw",     "club", None),
+    (124, 133, "hit",    "club", 0),
+    (133, 146, "hit",    "club", 0),
+    (146, 153, "swipe",  "club", None),
     (153, 159, "slice",  "cover", None),
     (159, 171, "swipein","cover", 2),
     (171, 180, "hit",    "cover", 0),
     (180, 190, "bwfade", "cover", None),
-    (190, 209, "hit",    "dimez", 0),
-    (209, 218, "hold",   "dimez", None),
-    (218, 226, "flick",  "dimez", {218: "i", 221: "i", 222: "d", 223: "di", 224: "db", 225: "di"}),
-    (226, 227, "rainbow","cover", None),
-    (227, 244, "chroma", "cover", 4),
-    (244, 254, "hold",   "cover", None),
-    (254, 263, "bwfade", "cover", None),
+    (190, 209, "hit",    "duo", 0),
+    (209, 218, "hold",   "cocktail", None),
+    (218, 226, "flick",  "cocktail", {218: "i", 221: "i", 222: "d", 223: "di", 224: "db", 225: "di"}),
+    (226, 227, "rainbow","vcboat", None),
+    (227, 244, "chroma", "vcboat", 4),
+    (244, 254, "hold",   "dimez", None),
+    (254, 263, "bwfade", "dimez", None),
     (263, 273, "hit",    "drequan", 0),
     (273, 282, "bwfade", "drequan", None),
-    (282, 300, "strobe", "drequan", [1, 1, 1, 1, 1, D, 1, D, D, .9, D, .8, .8, D, .6, .6, D, .6]),
-    (300, 318, "hit",    "jason", 7),
-    (318, 328, "hit",    "raul", 0),
-    (328, 337, "bwfade", "raul", None),
-    (337, 346, "hit",    "raul", 0),
-    (346, 356, "bwfade", "raul", None),
-    (356, 365, "hold",   "dimez", None),
-    (365, 373, "flick",  "dimez", {365: "w", 367: "d", 368: "i", 369: "d", 370: "i", 371: "d", 372: "di"}),
-    (373, 374, "rainbow","dimez", None),
-    (374, 391, "chroma", "dimez", 3),
-    (391, 400, "hold",   "drequan", None),
-    (400, 406, "bwfade", "drequan", None),
-    (406, 424, "strobe", "vi_end", [.7, .6, .5, .45, 1, 1, D, 1, 1, D, 1, D, D, 1, D, D, 1, D]),
-    (424, 437, "outro",  "vi_end", None),
+    (282, 300, "strobe", "car", [1, 1, 1, 1, 1, D, 1, D, D, .85, D, .7, .7, D, .45, .45, D, .45]),
+    (300, 318, "hit",    "gun", 7),
+    (318, 328, "hit",    "port", 0),
+    (328, 337, "bwfade", "port", None),
+    (337, 346, "hit",    "dress", 0),
+    (346, 356, "bwfade", "dress", None),
+    (356, 365, "hold",   "beach", None),
+    (365, 373, "flick",  "beach", {365: "w", 367: "d", 368: "i", 369: "d", 370: "i", 371: "d", 372: "di"}),
+    (373, 374, "rainbow","vi_end", None),
+    (374, 391, "chroma", "vi_end", 3),
+    (391, 400, "hold",   "bonnie", None),
+    (400, 406, "bwfade", "bonnie", None),
+    (406, 424, "strobe", "night", [.5, .35, .2, .1, 1, 1, D, 1, 1, D, 1, D, D, 1, D, D, 1, D]),
+    (424, 437, "outro",  "night", None),
 ]
+BOOMERANG = {"bw", "hit", "bwfade", "hold", "swipein", "chroma"}
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  SOURCES — chaque clip est extrait une fois, à sa cadence d'origine (jamais déformé)
+#  SOURCES — chaque plan est extrait une fois (recadrage 9:16, jamais déformé)
 # ══════════════════════════════════════════════════════════════════════════════
 
 class Clip:
-    def __init__(self, src, key, start, mode, cx, speed, n_out, tmp):
-        self.speed, self.path = speed, f"{tmp}/{key}.rgb"
-        n_src = int(np.ceil(n_out * speed)) + 2
+    def __init__(self, src, key, start, mode, cx, n_src, tmp):
+        self.path = f"{tmp}/{key}.rgb"
         if mode == "card":
             x0, y0, cw0, ch = CARD
             cw = int(ch * W / H) // 2 * 2
@@ -122,28 +142,77 @@ class Clip:
                         "-f", "rawvideo", "-pix_fmt", "rgb24", self.path], check=True)
         got = os.path.getsize(self.path) // (W * H * 3)
         self.mm = np.memmap(self.path, np.uint8, "r", shape=(got, H, W, 3))
-        # clips sombres éclaircis automatiquement (luminance moyenne visée ≈ 105)
         mean = float(np.mean(self.mm[::max(1, got // 6)]))
-        self.gain = float(np.clip(105.0 / max(mean, 1.0), 1.0, 2.2))
-        self.used = 0
+        self.gain = float(np.clip(105.0 / max(mean, 1.0), 1.0, 2.2))  # clips sombres éclaircis
 
-    def frame(self, i):
-        """Image i de sortie ; à vitesse < 1, mélange des 2 images source voisines (ralenti fluide)."""
-        pos = i * self.speed
-        a = min(int(pos), len(self.mm) - 1)
+    def at(self, pos):
+        """Image à la position source `pos` (en images, fractionnaire → mélange des voisines)."""
+        a = int(np.clip(int(pos), 0, len(self.mm) - 1))
         b = min(a + 1, len(self.mm) - 1)
-        w = pos - int(pos)
+        w = float(np.clip(pos - int(pos), 0, 1))
         f = self.mm[a].astype(np.float32) * (1 - w) + self.mm[b].astype(np.float32) * w
-        if self.gain > 1.01:  # éclaircit en protégeant les hautes lumières
+        if self.gain > 1.01:
             f = 255.0 * (1 - (1 - f / 255.0) ** self.gain)
         return f
 
-    def next(self):
-        f = self.frame(self.used)
-        self.used += 1
-        return f
+
+def boomerang(cur, n):
+    """Positions source d'un plan de n images : en avant, puis rembobinage jusqu'au départ."""
+    nf = max(2, int(round(n * FWD)))
+    nr = n - nf
+    pos = [cur + i for i in range(nf)]
+    peak = cur + nf - 1
+    pos += [peak - (j + 1) * (peak - cur) / max(nr, 1) for j in range(nr)]
+    return pos, cur + nf * 0.5          # le plan suivant reprend un peu plus loin
 
 
+def plan_edit():
+    """Pour chaque image de l'edit : (image du modèle, position dans le segment, segment, pos source)."""
+    n_edit = int(round(TPL_FRAMES / SLOW))
+    frames_of = {}
+    for k in range(n_edit):
+        tt = k / FPS * SLOW
+        tf = min(int(tt * FPS + 1e-6), TPL_FRAMES - 1)
+        idx = next(i for i, e in enumerate(TIMELINE) if e[0] <= tf < e[1])
+        frames_of.setdefault(idx, []).append((k, tf, (tt * FPS - TIMELINE[idx][0]) /
+                                              (TIMELINE[idx][1] - TIMELINE[idx][0])))
+    cur = {k: 0.0 for k in CLIPS}
+    plan = [None] * n_edit
+    for idx in sorted(frames_of):
+        e = TIMELINE[idx]
+        fr = frames_of[idx]
+        key = e[3]
+        if e[2] in BOOMERANG and len(fr) >= 4:
+            pos, cur[key] = boomerang(cur[key], len(fr))
+        else:
+            pos = [cur[key] + i for i in range(len(fr))]
+            cur[key] += len(fr)
+        for (k, tf, p), ps in zip(fr, pos):
+            plan[k] = (tf, p, e, ps)
+    return plan
+
+
+def plan_intro():
+    """Intro : chaque clip en boomerang, fondu enchaîné pendant le rembobinage du premier."""
+    seqs = []
+    for key, nf, nr in INTRO:
+        peak = nf - 1
+        back_to = peak * 0.4
+        pos = list(range(nf)) + [peak - (j + 1) * (peak - back_to) / nr for j in range(nr)]
+        seqs.append((key, pos))
+    (ka, pa), (kb, pb) = seqs
+    n = len(pa) + len(pb) - FADE
+    out = []
+    for k in range(n):
+        ia, ib = k, k - (len(pa) - FADE)
+        if ib < 0:
+            out.append(((ka, pa[ia]), None, 0.0))
+        elif ia < len(pa):
+            a = (ib + 1) / (FADE + 1)
+            out.append(((ka, pa[ia]), (kb, pb[ib]), a * a * (3 - 2 * a)))
+        else:
+            out.append(((kb, pb[ib]), None, 0.0))
+    return out
 # ══════════════════════════════════════════════════════════════════════════════
 #  EFFETS (formes relevées sur le modèle)
 # ══════════════════════════════════════════════════════════════════════════════
@@ -158,13 +227,6 @@ def grade(f):
 
 def bw(f):
     return np.repeat((f @ np.array([0.299, 0.587, 0.114], np.float32))[..., None], 3, axis=2)
-
-def fade_gain(p, hold_frac):
-    """Pleine lumière pendant le maintien, puis baisse linéaire jusqu'au plancher D."""
-    hold = max(hold_frac, 0.4)
-    if p <= hold:
-        return 1.0
-    return 1.0 - (1.0 - D) * min(1.0, (p - hold) / (1 - hold))
 
 def chroma(f, px):
     if px < 1:
@@ -246,43 +308,31 @@ def finish(f, rng):
 #  RENDU
 # ══════════════════════════════════════════════════════════════════════════════
 
-def intro_frames(clips, rng):
-    """2 clips vidéo en fondu enchaîné, légère poussée caméra, ouverture depuis le noir."""
-    (ka, na), (kb, nb) = INTRO
-    n = na + nb - FADE
-    for k in range(n):
-        if k < na - FADE:
-            f = clips[ka].next()
-        elif k < na:
-            a = (k - (na - FADE) + 1) / (FADE + 1)
-            a = a * a * (3 - 2 * a)                       # fondu doux (smoothstep)
-            f = clips[ka].next() * (1 - a) + clips[kb].next() * a
-        else:
-            f = clips[kb].next()
-        f = zoom(grade(f), 1.0 + 0.05 * k / n)
-        if k < 9:
-            f = f * (k / 9)
-        yield finish(f, rng)
+def fade_gain(p, hold_frac):
+    """Pleine lumière pendant le maintien puis chute au noir (modèle : 1 → 0,05).
+    Maintien minimum 30 % pour que chaque clip se voie clairement."""
+    hold = max(hold_frac, 0.3)
+    if p <= hold:
+        return 1.0
+    return 1.0 - (1.0 - D) * min(1.0, (p - hold) / (1 - hold))
 
 
-def edit_frame(tf, p, entry, clips, rng):
-    """tf = image du modèle (entier), p = position fractionnaire dans le segment."""
+def edit_frame(tf, p, entry, f, clips, rng):
     f0, f1, kind, key, prm = entry
-    f = grade(clips[key].next())
-
+    f = grade(f)
     if kind == "bw":
-        f = bw(f) * 0.9
+        f = bw(f) * 0.75
     elif kind == "hit":
         f = f * fade_gain(p, prm / (f1 - f0))
     elif kind == "bwfade":
-        f = bw(f) * (0.9 * fade_gain(p, 0.3))
+        f = bw(f) * (0.85 * fade_gain(p, 0.0))
     elif kind == "hold":
         pass
     elif kind == "swipe":
-        f = light_bar(f * 0.6, -0.05 + 1.0 * p, 0.10 + 0.08 * p)
+        f = light_bar(f * 0.35, -0.05 + 1.0 * p, 0.10 + 0.08 * p)
     elif kind == "slice":
-        prev = grade(clips["raul"].frame(clips["raul"].used))
-        f = slice_glitch(prev * 0.6, f, rng, p)
+        prev = grade(clips["club"].at(40)) * 0.35
+        f = slice_glitch(prev, f, rng, p)
     elif kind == "swipein":
         f = f * fade_gain(p, prm / (f1 - f0))
         if p < 0.65:
@@ -290,15 +340,15 @@ def edit_frame(tf, p, entry, clips, rng):
     elif kind == "flick":
         s = prm.get(tf, "n")
         if s == "i":
-            f = (255 - f) * np.array([0.8, 0.95, 1.1], np.float32)
+            f = (255 - f) * np.array([0.75, 0.95, 1.1], np.float32)
         elif s == "w":
-            f = np.minimum(255, f * 1.8 + 40)
+            f = np.minimum(255, f * 1.9 + 40)
         elif s == "d":
-            f = f * 0.6
+            f = f * 0.45
         elif s == "db":
-            f = radial_blur(f, 0.12) * 0.6
+            f = radial_blur(f, 0.12) * 0.45
         elif s == "di":
-            f = chroma((255 - f) * np.array([0.45, 0.6, 0.75], np.float32), 14)
+            f = chroma((255 - f) * np.array([0.3, 0.42, 0.55], np.float32), 14)
     elif kind == "rainbow":
         f = rainbow(f)
     elif kind == "chroma":
@@ -311,34 +361,35 @@ def edit_frame(tf, p, entry, clips, rng):
     elif kind == "outro":
         if p < 0.65:
             q = p / 0.65
-            f = radial_blur(f, 0.05 + 0.35 * q) * (1.0 + 0.45 * q)
+            f = radial_blur(f, 0.05 + 0.35 * q) * (1.0 + 0.5 * q)
         else:
             q = (p - 0.65) / 0.35
-            img = Image.fromarray(np.clip(radial_blur(f, 0.4) * 1.45, 0, 255).astype(np.uint8))
+            img = Image.fromarray(np.clip(radial_blur(f, 0.4) * 1.5, 0, 255).astype(np.uint8))
             f = np.asarray(img.filter(ImageFilter.GaussianBlur(12 + 40 * q)), np.float32)
             f = f * (1.0 - 0.6 * q)
     return finish(f, rng)
 
 
 def build(source, music, out):
-    n_intro = sum(n for _, n in INTRO) - FADE
-    n_edit = int(round(TPL_FRAMES / SLOW))
+    intro, plan = plan_intro(), plan_edit()
+    n_intro, n_edit = len(intro), len(plan)
     d_intro, d_edit = n_intro / FPS, n_edit / FPS
-    tmp = tempfile.mkdtemp(prefix="gta6_edit_")
     print(f"🎬  intro {d_intro:.2f} s (sans musique) + edit {d_edit:.2f} s = {d_intro + d_edit:.2f} s")
 
-    # nombre d'images de sortie demandées à chaque clip
-    need = {k: 0 for k in CLIPS}
-    for k, n in INTRO:
-        need[k] += n
-    for f0, f1, kind, key, _ in TIMELINE:
-        need[key] += int((f1 - f0) / SLOW) + 2
+    need = {k: 0.0 for k in CLIPS}
+    for a, b, _ in intro:
+        for kp in (a, b):
+            if kp:
+                need[kp[0]] = max(need[kp[0]], kp[1])
+    for tf, p, e, ps in plan:
+        need[e[3]] = max(need[e[3]], ps)
+    tmp = tempfile.mkdtemp(prefix="gta6_edit_")
     clips = {}
-    for key, (start, mode, cx, speed) in CLIPS.items():
-        clips[key] = Clip(source, key, start, mode, cx, speed, need[key], tmp)
-        c = clips[key]
-        print(f"   {key:<8} {int(start // 60)}:{start % 60:05.2f} → {start + need[key] * speed / FPS:7.2f} s"
-              f"  ({mode}, ×{speed}, éclairci ×{c.gain:.2f})")
+    for key, (start, mode, cx) in CLIPS.items():
+        n_src = int(need[key]) + 3
+        clips[key] = Clip(source, key, start, mode, cx, n_src, tmp)
+        print(f"   {key:<9} {int(start // 60)}:{start % 60:05.2f} → {start + n_src / FPS:7.2f} s"
+              f"  ({mode}, éclairci ×{clips[key].gain:.2f})")
 
     silent = f"{tmp}/video.mp4"
     ff = subprocess.Popen(["ffmpeg", "-v", "error", "-y", "-f", "rawvideo", "-pix_fmt", "rgb24",
@@ -346,30 +397,33 @@ def build(source, music, out):
                            "-preset", "slow", "-crf", "18", "-maxrate", "20M", "-bufsize", "40M",
                            "-pix_fmt", "yuv420p", silent], stdin=subprocess.PIPE)
     rng = np.random.default_rng(7)
-    for f in intro_frames(clips, rng):
-        ff.stdin.write(f.tobytes())
-    for k in range(n_edit):
-        tt = k / FPS * SLOW                                    # temps dans le modèle
-        tf = min(int(tt * FPS + 1e-6), TPL_FRAMES - 1)
-        e = next(e for e in TIMELINE if e[0] <= tf < e[1])
-        p = (tt * FPS - e[0]) / (e[1] - e[0])
-        ff.stdin.write(edit_frame(tf, p, e, clips, rng).tobytes())
+    for k, (a, b, w) in enumerate(intro):
+        f = clips[a[0]].at(a[1])
+        if b:
+            f = f * (1 - w) + clips[b[0]].at(b[1]) * w
+        f = zoom(grade(f), 1.0 + 0.05 * k / n_intro)
+        if k < 9:
+            f = f * (k / 9)
+        ff.stdin.write(finish(f, rng).tobytes())
+    for tf, p, e, ps in plan:
+        ff.stdin.write(edit_frame(tf, p, e, clips[e[3]].at(ps), clips, rng).tobytes())
     ff.stdin.close(); ff.wait()
 
-    # ── audio : intro = son d'origine des 2 clips en fondu ; puis musique super slowed ──
+    # ── audio : intro = son d'origine des 2 clips en fondu ; puis musique slowed ──
     sr = 44100
-    (ka, na), (kb, nb) = INTRO
+    (ka, nfa, nra), (kb, nfb, nrb) = INTRO
     sa, sb = CLIPS[ka][0], CLIPS[kb][0]
-    fc = (f"[0:a]atrim={sa}:{sa + na / FPS:.3f},asetpts=PTS-STARTPTS,aresample={sr}[a1];"
-          f"[0:a]atrim={sb}:{sb + nb / FPS:.3f},asetpts=PTS-STARTPTS,aresample={sr}[a2];"
+    la, lb = (nfa + nra) / FPS, (nfb + nrb) / FPS
+    fc = (f"[0:a]atrim={sa}:{sa + la:.3f},asetpts=PTS-STARTPTS,aresample={sr}[a1];"
+          f"[0:a]atrim={sb}:{sb + lb:.3f},asetpts=PTS-STARTPTS,aresample={sr}[a2];"
           f"[a1][a2]acrossfade=d={FADE / FPS:.3f}:c1=tri:c2=tri,"
           f"afade=t=in:d=0.3,afade=t=out:st={d_intro - 0.25:.3f}:d=0.25,"
-          f"loudnorm=I=-20:TP=-2,aresample={sr},atrim=0:{d_intro:.3f}[intro];"
+          f"loudnorm=I=-20:TP=-2,aresample={sr},apad,atrim=0:{d_intro:.3f}[intro];"
           f"[1:a]asetrate={int(sr * SLOW)},aresample={sr},"
-          "aecho=0.8:0.82:70|140|260|400:0.32|0.24|0.16|0.10,"
-          "lowpass=f=11000,bass=g=3:f=90,"
-          f"loudnorm=I=-14:TP=-1.0:LRA=11,aresample={sr},atrim=0:{d_edit:.3f},"
-          f"afade=t=out:st={d_edit - 0.9:.2f}:d=0.9[mus];"
+          "aecho=0.8:0.8:60|120|220:0.28|0.2|0.12,"
+          "lowpass=f=13000,bass=g=2:f=90,"
+          f"loudnorm=I=-14:TP=-1.0:LRA=11,aresample={sr},apad,atrim=0:{d_edit:.3f},"
+          f"afade=t=out:st={d_edit - 0.8:.2f}:d=0.8[mus];"
           "[intro][mus]concat=n=2:v=0:a=1[a]")
     subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", source, "-i", music, "-i", silent,
                     "-filter_complex", fc, "-map", "2:v", "-map", "[a]", "-c:v", "copy",
@@ -379,7 +433,7 @@ def build(source, music, out):
 
 
 if __name__ == "__main__":
-    ap = argparse.ArgumentParser(description="Edit GTA 6 réplique du modèle CapCut + musique super slowed")
+    ap = argparse.ArgumentParser(description="Edit GTA 6 réplique du modèle CapCut + musique slowed")
     ap.add_argument("--source", required=True, help="vidéo longue GTA 6")
     ap.add_argument("--music", required=True, help="fichier audio/vidéo de la musique (aperçu du modèle)")
     ap.add_argument("--out", default=OUT)
